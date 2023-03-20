@@ -6,12 +6,12 @@ import torch
 import torch.nn as nn
 import MLPmodel 
 import numpy as np
-
+from dataloader import m,tau
 #Training parameters
 lr=1e-4
 epoch=100
-model=[32,64,32]
-batch_size=128
+model=[16,64,128,64,16]
+batch_size=512
 
 #Dataset preparation
 
@@ -30,7 +30,7 @@ validation_loader = torch.utils.data.DataLoader(dataset=validation_dataset,
 
 
 # Initialize the MLP
-mlp = MLPmodel.MLP(len(train_dataset.__getitem__(0)[0]),len(train_dataset.__getitem__(0)[1]),model,mean,std)
+mlp = MLPmodel.MLP(len(train_dataset.__getitem__(0)[0]),len(train_dataset.__getitem__(0)[1]),model,mean,std, m,tau)
 
 
 # Define the loss function and optimizer

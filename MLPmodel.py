@@ -14,7 +14,7 @@ import numpy as np
 
 
 class MLP(nn.Module):
-    def __init__(self,n_input,n_out,model,mean,std):
+    def __init__(self,n_input,n_out,model,mean,std,m,tau):
         super().__init__()
         self.layers = nn.Sequential()
         self.layers.append(nn.Linear(n_input, model[0]))
@@ -23,9 +23,11 @@ class MLP(nn.Module):
             self.layers.append(nn.Linear(model[layer],model[layer+1]))
             self.layers.append(nn.ReLU())
         self.layers.append(nn.Linear(model[-1],n_out))
-        self.print_model()
+        # self.print_model()
         self.mean=mean
         self.std=std
+        self.m=m
+        self.tau=tau
 
     def forward(self, x):
      
@@ -103,7 +105,7 @@ class MLP(nn.Module):
             
         #plot training history
         if plot:
-            epoch_list=[i for i in range(0,n_epoch)]
+            epoch_list=[i for i in range(0,epoch+1)]
             plt.figure()
             ax = plt.subplot(111)
             plt.semilogy(epoch_list,loss_history_tr,label="Training set")
@@ -123,26 +125,19 @@ class MLP(nn.Module):
     
     def predict_auto_regressive(self,starting_state,n_steps):
         state_in=starting_state.numpy()
-        history=np.empty((0, 6))
+        history=np.empty((0, len(state_in)-1))
         for s in range(n_steps):
-
+            print("in")
+            print(state_in)
+            print("out")
             state_out=self.__call__(torch.tensor(state_in)).detach().numpy()
+            print(state_out)
             history=np.vstack((history,state_out))
             dalpha=state_out[1]-state_in[1]
-            state_in[:6]=state_out
-            state_in[6]=dalpha
-        return(history)
-    def predict_one_step(self,state_list):
-        history=np.empty((0, 6))
-        for s in state_list:
+            state_in[:len(state_in)-1]=state_out
+            state_in[-1]=dalpha
+        return history
 
-            state_out=self.__call__(s).detach().numpy()
-            history=np.vstack((history,state_out))
-            dalpha=state_out[1]-state_in[1]
-            state_in[:6]=state_out
-            state_in[6]=dalpha
-        return(history)
-        return None
 #-----------------------------------------------------------------------------
 
 

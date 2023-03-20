@@ -5,123 +5,137 @@ import random
 import torch
 import MLPmodel
 
-df=pd.read_pickle("NNet_files/feedback_control_data.pkl")
-cols_to_keep = ['phase', 'pitch', 'Cp','Ct','Cr','Cm']
 
-#NORMALIZATION STEP----------------------------------------
-# create numpy arrays to store the means and stds
-means = np.zeros((len(cols_to_keep),))
-stds = np.zeros((len(cols_to_keep),))
+# cols_to_keep = ['phase', 'pitch', 'Cp','Ct','Cr','Cm']
+cols_to_keep = ['phase', 'pitch', 'Cp']
+m=1
+tau=0
 
-# normalize each column
-for i, col in enumerate(cols_to_keep):
-    
-    # calculate the mean and standard deviation
-    col_mean = df[col].mean()
-    col_std = df[col].std()
-    
-    # store the mean and standard deviation in the numpy arrays
-    means[i] = col_mean
-    stds[i] = col_std
-    
-    # normalize the column
-    df[col] = (df[col] - col_mean) / col_std
+if __name__=="__main__":
+    df=pd.read_pickle("NNet_files/feedback_control_data.pkl")
+    #NORMALIZATION STEP----------------------------------------
+    # create numpy arrays to store the means and stds
+    means = np.zeros((len(cols_to_keep),))
+    stds = np.zeros((len(cols_to_keep),))
 
-# save the means and stds to files
-np.savetxt('NNet_files/means.txt', means)
-np.savetxt('NNet_files/stds.txt', stds)
-#----------------------------------------
-
-all_Cpmean = df['Cp_mean']
-unique_Cp_mean = all_Cpmean.unique().tolist()
-
- 
-# define the proportions of the three sets
-train_prop = 0.7
-val_prop = 0.15
-test_prop = 0.15
-
-# set the random seed for reproducibility
-random.seed(123)
-
-# calculate the number of elements in each category based on the proportions
-train_count = int(train_prop * len(unique_Cp_mean))
-val_count = int(val_prop * len(unique_Cp_mean))
-test_count = int(test_prop * len(unique_Cp_mean))
-
-# create a list to store the category assignments
-categories_list = []
-
-# assign each value in the original list to a category randomly
-for i in range(len(unique_Cp_mean)):
-    if train_count > 0:
-        categories_list.append('train')
-        train_count -= 1
-    elif val_count > 0:
-        categories_list.append('val')
-        val_count -= 1
-    else:
-        categories_list.append('test')
-        test_count -= 1
-
-# shuffle the categories list randomly
-random.shuffle(categories_list)
-
-x_train=np.empty((0, 7))
-x_val=np.empty((0, 7))
-x_test=np.empty((0, 7))
-y_train=np.empty((0, 6))
-y_val=np.empty((0, 6))
-y_test=np.empty((0, 6))
-test_index=[0]
-
-for i,value in enumerate(unique_Cp_mean):
-    print(i)
-    # create a new dataframe that only includes rows with the current value
-    sub_df = df[df['Cp_mean'] == value]
-    sub_df=sub_df.iloc[940:2820,:]
-    
-
-    # create a new dataframe with only the selected columns and without the first row
-    df_no_first = sub_df[cols_to_keep][1:]
-    df_no_first = df_no_first.reset_index(drop=True)
-    # create a new dataframe with only the selected columns and without the last row
-    df_no_last = sub_df[cols_to_keep][:-1]
-    
-    #add column containing the 'pitch command'
-    
-    df_no_last['pitch_increment'] = sub_df['pitch'].diff(periods=-1)[:-1]
-    df_no_last['pitch_increment'] = -1*df_no_last['pitch_increment'] 
-    
-    category=categories_list[i]
-
-    if category =='train':
-        x_train=np.vstack((x_train,df_no_last.values))
-        y_train=np.vstack((y_train,df_no_first.values))
-
-    elif category =='test':
-        x_test=np.vstack((x_test,df_no_last.values))
-        y_test=np.vstack((y_test,df_no_first.values))
-        test_index.append(len(x_test)-1)
+    # normalize each column
+    for i, col in enumerate(cols_to_keep):
         
-    elif category =='val':
-        x_val=np.vstack((x_val,df_no_last.values))
-        y_val=np.vstack((y_val,df_no_first.values))
+        # calculate the mean and standard deviation
+        col_mean = df[col].mean()
+        col_std = df[col].std()
+        
+        # store the mean and standard deviation in the numpy arrays
+        means[i] = col_mean
+        stds[i] = col_std
+        
+        # normalize the column
+        df[col] = (df[col] - col_mean) / col_std
 
+    # save the means and stds to files
+    np.savetxt('NNet_files/means.txt', means)
+    np.savetxt('NNet_files/stds.txt', stds)
+    #----------------------------------------
 
-T_x_train=torch.tensor(x_train)
-T_x_val=torch.tensor(x_val)
-T_x_test=torch.tensor(x_test)
-T_y_train=torch.tensor(y_train)
-T_y_val=torch.tensor(y_val)
-T_y_test=torch.tensor(y_test)
+    all_Cpmean = df['Cp_mean']
+    unique_Cp_mean = all_Cpmean.unique().tolist()
 
-train_dataset=MLPmodel.Dataset(T_x_train,T_y_train)
-test_dataset=MLPmodel.Dataset(T_x_test,T_y_test)
-validation_dataset=MLPmodel.Dataset(T_x_val,T_y_val)
     
-    
-torch.save(train_dataset,"./NNet_files/training_set.pt")
-torch.save(test_dataset,"./NNet_files/test_set.pt")
-torch.save(validation_dataset,"./NNet_files/validation_set.pt")
-np.savetxt("./NNet_files/test_index.npy",np.array(test_index))
+    # define the proportions of the three sets
+    train_prop = 0.7
+    val_prop = 0.15
+    test_prop = 0.15
+
+    # set the random seed for reproducibility
+    random.seed(123)
+
+    # calculate the number of elements in each category based on the proportions
+    train_count = int(train_prop * len(unique_Cp_mean))
+    val_count = int(val_prop * len(unique_Cp_mean))
+    test_count = int(test_prop * len(unique_Cp_mean))
+
+    # create a list to store the category assignments
+    categories_list = []
+
+    # assign each value in the original list to a category randomly
+    for i in range(len(unique_Cp_mean)):
+        if train_count > 0:
+            categories_list.append('train')
+            train_count -= 1
+        elif val_count > 0:
+            categories_list.append('val')
+            val_count -= 1
+        else:
+            categories_list.append('test')
+            test_count -= 1
+
+    # shuffle the categories list randomly
+    random.shuffle(categories_list)
+
+    x_train=np.empty((0, len(cols_to_keep)*m+1))
+    x_val=np.empty((0, len(cols_to_keep)*m+1))
+    x_test=np.empty((0, len(cols_to_keep)*m+1))
+    y_train=np.empty((0, len(cols_to_keep)))
+    y_val=np.empty((0, len(cols_to_keep)))
+    y_test=np.empty((0, len(cols_to_keep)))
+    test_index=[0]
+
+    for i,value in enumerate(unique_Cp_mean[:200]):
+        print(i)
+        # create a new dataframe that only includes rows with the current value
+        sub_df = df[df['Cp_mean'] == value]
+        sub_df=sub_df.iloc[1880:2820,:]
+        
+
+
+        # create a new dataframe with only the selected columns and without the last row
+        df_no_last = sub_df[cols_to_keep][:-1]
+
+        #add column containing the 'pitch command'
+        
+        df_no_last['pitch_increment'] = sub_df['pitch'].diff(periods=-1)[:-1]
+        df_no_last['pitch_increment'] = -1*df_no_last['pitch_increment'] 
+        if m==2:
+            df_no_last_shift=df_no_last.iloc[tau:-1].copy()
+            df_no_last_0 = df_no_last.iloc[:-tau-1].copy()
+            df_no_last_0= df_no_last_0.drop('pitch_increment', axis=1)
+            
+            df_merged = pd.concat([df_no_last_0.reset_index(drop=True), df_no_last_shift.reset_index(drop=True)], axis=1)
+        elif m==1:
+            df_merged=df_no_last
+        # create a new dataframe with only the selected columns and without the first row
+        df_no_first = sub_df[cols_to_keep][tau+1:]
+        df_no_first = df_no_first.reset_index(drop=True)
+        category=categories_list[i]
+
+        if category =='train':
+            x_train=np.vstack((x_train,df_merged.values))
+            y_train=np.vstack((y_train,df_no_first.values))
+
+        elif category =='test':
+            x_test=np.vstack((x_test,df_merged.values))
+            y_test=np.vstack((y_test,df_no_first.values))
+            test_index.append(len(x_test)-1)
+            
+        elif category =='val':
+            x_val=np.vstack((x_val,df_merged.values))
+            y_val=np.vstack((y_val,df_no_first.values))
+
+    print(x_train)
+    print(y_train)
+    T_x_train=torch.tensor(x_train)
+    T_x_val=torch.tensor(x_val)
+    T_x_test=torch.tensor(x_test)
+    T_y_train=torch.tensor(y_train)
+    T_y_val=torch.tensor(y_val)
+    T_y_test=torch.tensor(y_test)
+
+    train_dataset=MLPmodel.Dataset(T_x_train,T_y_train)
+    test_dataset=MLPmodel.Dataset(T_x_test,T_y_test)
+    validation_dataset=MLPmodel.Dataset(T_x_val,T_y_val)
+        
+        
+    torch.save(train_dataset,"./NNet_files/training_set.pt")
+    torch.save(test_dataset,"./NNet_files/test_set.pt")
+    torch.save(validation_dataset,"./NNet_files/validation_set.pt")
+    np.savetxt("./NNet_files/test_index.npy",np.array(test_index))
