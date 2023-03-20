@@ -3,7 +3,34 @@ import numpy as np
 import matplotlib.pyplot as plt 
 import random
 import torch
-df=pd.read_pickle("feedback_control_data.pkl")
+import MLPmodel
+
+df=pd.read_pickle("NNet_files/feedback_control_data.pkl")
+cols_to_keep = ['phase', 'pitch', 'Cp','Ct','Cr','Cm']
+
+#NORMALIZATION STEP----------------------------------------
+# create numpy arrays to store the means and stds
+means = np.zeros((len(cols_to_keep),))
+stds = np.zeros((len(cols_to_keep),))
+
+# normalize each column
+for i, col in enumerate(cols_to_keep):
+    
+    # calculate the mean and standard deviation
+    col_mean = df[col].mean()
+    col_std = df[col].std()
+    
+    # store the mean and standard deviation in the numpy arrays
+    means[i] = col_mean
+    stds[i] = col_std
+    
+    # normalize the column
+    df[col] = (df[col] - col_mean) / col_std
+
+# save the means and stds to files
+np.savetxt('NNet_files/means.txt', means)
+np.savetxt('NNet_files/stds.txt', stds)
+#----------------------------------------
 
 all_Cpmean = df['Cp_mean']
 unique_Cp_mean = all_Cpmean.unique().tolist()
@@ -46,21 +73,24 @@ x_test=np.empty((0, 7))
 y_train=np.empty((0, 6))
 y_val=np.empty((0, 6))
 y_test=np.empty((0, 6))
+test_index=[0]
 
-for i,value in enumerate(unique_Cp_mean[:1]):
+for i,value in enumerate(unique_Cp_mean):
+    print(i)
     # create a new dataframe that only includes rows with the current value
     sub_df = df[df['Cp_mean'] == value]
-    cols_to_keep = ['phase', 'pitch', 'Cp','Ct','Cr','Cm']
+    sub_df=sub_df.iloc[940:2820,:]
+    
 
     # create a new dataframe with only the selected columns and without the first row
-    df_no_first = df[cols_to_keep][1:]
+    df_no_first = sub_df[cols_to_keep][1:]
     df_no_first = df_no_first.reset_index(drop=True)
     # create a new dataframe with only the selected columns and without the last row
-    df_no_last = df[cols_to_keep][:-1]
+    df_no_last = sub_df[cols_to_keep][:-1]
     
     #add column containing the 'pitch command'
     
-    df_no_last['pitch_increment'] = df['pitch'].diff(periods=-1)[:-1]
+    df_no_last['pitch_increment'] = sub_df['pitch'].diff(periods=-1)[:-1]
     df_no_last['pitch_increment'] = -1*df_no_last['pitch_increment'] 
     
     category=categories_list[i]
@@ -69,17 +99,29 @@ for i,value in enumerate(unique_Cp_mean[:1]):
         x_train=np.vstack((x_train,df_no_last.values))
         y_train=np.vstack((y_train,df_no_first.values))
 
-    if category =='test':
+    elif category =='test':
         x_test=np.vstack((x_test,df_no_last.values))
         y_test=np.vstack((y_test,df_no_first.values))
+        test_index.append(len(x_test)-1)
         
-    if category =='val':
+    elif category =='val':
         x_val=np.vstack((x_val,df_no_last.values))
         y_val=np.vstack((y_val,df_no_first.values))
+
 
 T_x_train=torch.tensor(x_train)
 T_x_val=torch.tensor(x_val)
 T_x_test=torch.tensor(x_test)
 T_y_train=torch.tensor(y_train)
 T_y_val=torch.tensor(y_val)
-T_test=torch.tensor(y_test)
+T_y_test=torch.tensor(y_test)
+
+train_dataset=MLPmodel.Dataset(T_x_train,T_y_train)
+test_dataset=MLPmodel.Dataset(T_x_test,T_y_test)
+validation_dataset=MLPmodel.Dataset(T_x_val,T_y_val)
+    
+    
+torch.save(train_dataset,"./NNet_files/training_set.pt")
+torch.save(test_dataset,"./NNet_files/test_set.pt")
+torch.save(validation_dataset,"./NNet_files/validation_set.pt")
+np.savetxt("./NNet_files/test_index.npy",np.array(test_index))

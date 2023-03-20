@@ -9,11 +9,12 @@ import torch
 import torch.nn as nn 
 import matplotlib.pyplot as plt 
 import time
+import numpy as np
 
 
 
 class MLP(nn.Module):
-    def __init__(self,n_input,n_out,model):
+    def __init__(self,n_input,n_out,model,mean,std):
         super().__init__()
         self.layers = nn.Sequential()
         self.layers.append(nn.Linear(n_input, model[0]))
@@ -23,7 +24,8 @@ class MLP(nn.Module):
             self.layers.append(nn.ReLU())
         self.layers.append(nn.Linear(model[-1],n_out))
         self.print_model()
-    
+        self.mean=mean
+        self.std=std
 
     def forward(self, x):
      
@@ -118,6 +120,29 @@ class MLP(nn.Module):
             plt.ylim(1e-4,1)
             plt.show()
 
+    
+    def predict_auto_regressive(self,starting_state,n_steps):
+        state_in=starting_state.numpy()
+        history=np.empty((0, 6))
+        for s in range(n_steps):
+
+            state_out=self.__call__(torch.tensor(state_in)).detach().numpy()
+            history=np.vstack((history,state_out))
+            dalpha=state_out[1]-state_in[1]
+            state_in[:6]=state_out
+            state_in[6]=dalpha
+        return(history)
+    def predict_one_step(self,state_list):
+        history=np.empty((0, 6))
+        for s in state_list:
+
+            state_out=self.__call__(s).detach().numpy()
+            history=np.vstack((history,state_out))
+            dalpha=state_out[1]-state_in[1]
+            state_in[:6]=state_out
+            state_in[6]=dalpha
+        return(history)
+        return None
 #-----------------------------------------------------------------------------
 
 
