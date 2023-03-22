@@ -36,7 +36,7 @@ if __name__=="__main__":
     np.savetxt('NNet_files/means.txt', means)
     np.savetxt('NNet_files/stds.txt', stds)
     #----------------------------------------
-
+    df=df[::5]
     all_Cpmean = df['Cp_mean']
     unique_Cp_mean = all_Cpmean.unique().tolist()
 
@@ -80,12 +80,13 @@ if __name__=="__main__":
     y_test=np.empty((0, len(cols_to_keep)))
     test_index=[0]
 
-    for i,value in enumerate(unique_Cp_mean[:200]):
+    for i,value in enumerate(unique_Cp_mean[:]):
         print(i)
         # create a new dataframe that only includes rows with the current value
         sub_df = df[df['Cp_mean'] == value]
-        sub_df=sub_df.iloc[1880:2820,:]
         
+        sub_df=sub_df.iloc[10:150,:]
+        print(sub_df.iloc[0:2,:])
 
 
         # create a new dataframe with only the selected columns and without the last row
@@ -115,7 +116,7 @@ if __name__=="__main__":
         elif category =='test':
             x_test=np.vstack((x_test,df_merged.values))
             y_test=np.vstack((y_test,df_no_first.values))
-            test_index.append(len(x_test)-1)
+            test_index.append(len(x_test))
             
         elif category =='val':
             x_val=np.vstack((x_val,df_merged.values))

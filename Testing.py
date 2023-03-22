@@ -25,30 +25,29 @@ mlp.load_state_dict(torch.load("./NNet_files/trained_net.pt")) #loads trained ML
 mlp.eval()
 
 
-
-
 R2_memory=[]
 
-for i,index in enumerate(test_index[:2]):
-    nsteps=test_index[i+1]-index
+for i,index in enumerate(test_index[:5]):
+    nsteps=100
     starting_state=testing_dataset.__getitem__(index)[0].float()
-    Y_truth=np.array([testing_dataset.__getitem__(j)[1].detach().numpy() for j in range(index,index+nsteps)])
-    Y_pred=mlp.predict_auto_regressive(starting_state,nsteps)
-    Y_pred2=np.array([mlp(testing_dataset.__getitem__(j)[0].float()).detach().numpy() for j in range(index,index+nsteps)])
+    Y_truth=np.array([testing_dataset.__getitem__(j)[1].detach().numpy() for j in range(index,index+nsteps+1)])
+    pitch_list=np.array([testing_dataset.__getitem__(j)[0].detach().numpy()[1] for j in range(index,index+nsteps+1)])
+    Y_pred=mlp.predict_auto_regressive(starting_state,nsteps,pitch_list)
+    Y_pred2=np.array([mlp(testing_dataset.__getitem__(j)[0].float()).detach().numpy() for j in range(index,index+nsteps+1)])
     # R2_test= sklearn.metrics.r2_score(Y_truth,Y_pred)
     print("\n Ypred2")
     print(Y_pred2[:3,:])
     # R2_memory.append(R2_test)
 
-    plt.figure()
-    plt.plot(Y_truth[:,0])
-    plt.plot(Y_pred[:,0])
-    plt.plot(Y_pred2[:,0])
+    # plt.figure()
+    # plt.plot(Y_truth[:,0])
+    # plt.plot(Y_pred[:,0])
+    # plt.plot(Y_pred2[:,0])
     
-    plt.figure()
-    plt.plot(Y_truth[:,1])
-    plt.plot(Y_pred[:,1])
-    plt.plot(Y_pred2[:,1])
+    # plt.figure()
+    # plt.plot(Y_truth[:,1])
+    # plt.plot(Y_pred[:,1])
+    # plt.plot(Y_pred2[:,1])
     
     plt.figure()
     plt.plot(Y_truth[:,2])
@@ -57,5 +56,3 @@ for i,index in enumerate(test_index[:2]):
     
 plt.show()
 print(R2_memory)
-
-#add std to the MLPmodel

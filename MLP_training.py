@@ -9,8 +9,8 @@ import numpy as np
 from dataloader import m,tau
 #Training parameters
 lr=1e-4
-epoch=100
-model=[16,64,128,64,16]
+epoch=200
+model=[64,128,64]
 batch_size=512
 
 #Dataset preparation

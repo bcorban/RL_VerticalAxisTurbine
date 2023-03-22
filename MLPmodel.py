@@ -119,21 +119,21 @@ class MLP(nn.Module):
             plt.xlabel("Epochs")
             plt.ylabel("Loss")
             plt.title(f"Training {model}")
-            plt.ylim(1e-4,1)
+            # plt.ylim(1e-4,1)
             plt.show()
 
     
-    def predict_auto_regressive(self,starting_state,n_steps):
+    def predict_auto_regressive(self,starting_state,n_steps,pitch_list):
         state_in=starting_state.numpy()
         history=np.empty((0, len(state_in)-1))
-        for s in range(n_steps):
+        for s in range(n_steps-1):
             print("in")
             print(state_in)
             print("out")
             state_out=self.__call__(torch.tensor(state_in)).detach().numpy()
             print(state_out)
             history=np.vstack((history,state_out))
-            dalpha=state_out[1]-state_in[1]
+            dalpha=pitch_list[s+1]-state_out[1]
             state_in[:len(state_in)-1]=state_out
             state_in[-1]=dalpha
         return history
