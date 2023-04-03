@@ -7,19 +7,22 @@ import MLPmodel
 
 
 # cols_to_keep = ['phase', 'pitch', 'Cp','Ct','Cr','Cm']
-cols_to_keep = ['phase', 'pitch', 'Cp']
-m=1
-tau=0
+cols_to_keep_in = ['phase','pitch', 'Cp','Cr','Cm']
+cols_to_keep_shift=['pitch', 'Cp']
+# cols_to_keep_shift=[]
+cols_to_keep_out = ['pitch', 'Cp','Cr','Cm']
+m=2
+tau=2
 
 if __name__=="__main__":
     df=pd.read_pickle("NNet_files/feedback_control_data.pkl")
     #NORMALIZATION STEP----------------------------------------
     # create numpy arrays to store the means and stds
-    means = np.zeros((len(cols_to_keep),))
-    stds = np.zeros((len(cols_to_keep),))
+    means = np.zeros((len(cols_to_keep_in),))
+    stds = np.zeros((len(cols_to_keep_in),))
 
     # normalize each column
-    for i, col in enumerate(cols_to_keep):
+    for i, col in enumerate(cols_to_keep_in):
         
         # calculate the mean and standard deviation
         col_mean = df[col].mean()
@@ -72,42 +75,44 @@ if __name__=="__main__":
     # shuffle the categories list randomly
     random.shuffle(categories_list)
 
-    x_train=np.empty((0, len(cols_to_keep)*m+1))
-    x_val=np.empty((0, len(cols_to_keep)*m+1))
-    x_test=np.empty((0, len(cols_to_keep)*m+1))
-    y_train=np.empty((0, len(cols_to_keep)))
-    y_val=np.empty((0, len(cols_to_keep)))
-    y_test=np.empty((0, len(cols_to_keep)))
+    x_train=np.empty((0, len(cols_to_keep_in)+(m-1)*len(cols_to_keep_shift)+1))
+    x_val=np.empty((0, len(cols_to_keep_in)+(m-1)*len(cols_to_keep_shift)+1))
+    x_test=np.empty((0, len(cols_to_keep_in)+(m-1)*len(cols_to_keep_shift)+1))
+    y_train=np.empty((0, len(cols_to_keep_out)))
+    y_val=np.empty((0, len(cols_to_keep_out)))
+    y_test=np.empty((0, len(cols_to_keep_out)))
     test_index=[0]
 
     for i,value in enumerate(unique_Cp_mean[:]):
-        print(i)
+        # print(i)
         # create a new dataframe that only includes rows with the current value
         sub_df = df[df['Cp_mean'] == value]
         
-        sub_df=sub_df.iloc[10:150,:]
-        print(sub_df.iloc[0:2,:])
+        sub_df=sub_df.iloc[:1000,:]
+
 
 
         # create a new dataframe with only the selected columns and without the last row
-        df_no_last = sub_df[cols_to_keep][:-1]
+        df_no_last = sub_df[cols_to_keep_in][:-1]
 
         #add column containing the 'pitch command'
         
         df_no_last['pitch_increment'] = sub_df['pitch'].diff(periods=-1)[:-1]
         df_no_last['pitch_increment'] = -1*df_no_last['pitch_increment'] 
         if m==2:
-            df_no_last_shift=df_no_last.iloc[tau:-1].copy()
-            df_no_last_0 = df_no_last.iloc[:-tau-1].copy()
+            df_no_last_shift=df_no_last.iloc[tau:].copy()
+            df_no_last_0 = df_no_last.iloc[:-tau].copy()
             df_no_last_0= df_no_last_0.drop('pitch_increment', axis=1)
-            
-            df_merged = pd.concat([df_no_last_0.reset_index(drop=True), df_no_last_shift.reset_index(drop=True)], axis=1)
+            df_no_last_0=df_no_last_0[cols_to_keep_shift]
+            df_merged = pd.concat([df_no_last_shift.reset_index(drop=True),df_no_last_0.reset_index(drop=True)], axis=1)
+            df_no_first = sub_df[cols_to_keep_out][tau+1:]
+            df_no_first = df_no_first.reset_index(drop=True)
+            category=categories_list[i]
         elif m==1:
             df_merged=df_no_last
-        # create a new dataframe with only the selected columns and without the first row
-        df_no_first = sub_df[cols_to_keep][tau+1:]
-        df_no_first = df_no_first.reset_index(drop=True)
-        category=categories_list[i]
+            df_no_first = sub_df[cols_to_keep_out][1:]
+            df_no_first = df_no_first.reset_index(drop=True)
+            category=categories_list[i]
 
         if category =='train':
             x_train=np.vstack((x_train,df_merged.values))

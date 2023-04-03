@@ -123,20 +123,45 @@ class MLP(nn.Module):
             plt.show()
 
     
-    def predict_auto_regressive(self,starting_state,n_steps,pitch_list):
-        state_in=starting_state.numpy()
-        history=np.empty((0, len(state_in)-1))
-        for s in range(n_steps-1):
-            print("in")
-            print(state_in)
-            print("out")
-            state_out=self.__call__(torch.tensor(state_in)).detach().numpy()
-            print(state_out)
+    def predict_auto_regressive(self,starting_state,n_steps,pitch_list,phase_list):
+        if self.m==1:
+        
+            state_in=starting_state.numpy()
+            history=np.empty((0, len(state_in)-2))
+            for s in range(n_steps-1):
+                print("in")
+                print(state_in)
+                print("out")
+                state_out=self.__call__(torch.tensor(state_in)).detach().numpy()
+                print(state_out)
+                history=np.vstack((history,state_out))
+                dalpha=pitch_list[s+1]-state_out[0]
+                state_in[1:len(state_in)-1]=state_out
+                state_in[-1]=dalpha
+                state_in[0]=phase_list[s+1]
+            print(history)
+            return history
+        elif self.m==2:
+            state_in=starting_state.numpy()
+            history=np.empty((0, 4))
             history=np.vstack((history,state_out))
-            dalpha=pitch_list[s+1]-state_out[1]
-            state_in[:len(state_in)-1]=state_out
-            state_in[-1]=dalpha
-        return history
+            for s in range(n_steps-1):
+                print("in")
+                print(state_in)
+                print("out")
+                state_out=self.__call__(torch.tensor(state_in)).detach().numpy()
+                print(state_out)
+                history=np.vstack((history,state_out))
+                dalpha=pitch_list[s+1]-state_out[0]
+                state_in=np.zeros(len(starting_state.numpy()))
+                state_in[1:len(state_out)+1]=state_out
+                state_in[len(state_out)+1]=dalpha
+                state_in[0]=phase_list[s+1]
+                state_in[len(state_out)+2:]=history[-self.tau][:2]
+                state_in.astype(float)
+            print(history)
+            return history
+        
 
 #-----------------------------------------------------------------------------
 
