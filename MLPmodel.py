@@ -11,8 +11,6 @@ import matplotlib.pyplot as plt
 import time
 import numpy as np
 
-
-
 class MLP(nn.Module):
     def __init__(self,n_input,n_out,model,mean,std,m,tau):
         super().__init__()
@@ -31,7 +29,7 @@ class MLP(nn.Module):
 
     def forward(self, x):
      
-        out=self.layers(x)
+        out=self.layers(x.float())
         return out
     
     
@@ -125,14 +123,14 @@ class MLP(nn.Module):
     
     def predict_auto_regressive(self,starting_state,n_steps,pitch_list,phase_list):
         if self.m==1:
-        
+            
             state_in=starting_state.numpy()
             history=np.empty((0, len(state_in)-2))
             for s in range(n_steps-1):
                 print("in")
                 print(state_in)
                 print("out")
-                state_out=self.__call__(torch.tensor(state_in)).detach().numpy()
+                state_out=self.__call__(torch.tensor(state_in).float()).detach().numpy()
                 print(state_out)
                 history=np.vstack((history,state_out))
                 dalpha=pitch_list[s+1]-state_out[0]
@@ -142,9 +140,14 @@ class MLP(nn.Module):
             print(history)
             return history
         elif self.m==2:
-            state_in=starting_state.numpy()
+            print('Starting_state:')
+            print(starting_state)
+            state_in=starting_state[-1]
             history=np.empty((0, 4))
-            history=np.vstack((history,state_out))
+            for state in starting_state[1:]:
+                history=np.vstack((history,state[1:5]))
+            print('history')
+            print(history)            
             for s in range(n_steps-1):
                 print("in")
                 print(state_in)
@@ -153,13 +156,15 @@ class MLP(nn.Module):
                 print(state_out)
                 history=np.vstack((history,state_out))
                 dalpha=pitch_list[s+1]-state_out[0]
-                state_in=np.zeros(len(starting_state.numpy()))
+                state_in=np.zeros(len(state_in)) #to be deleted, temporary to check if any 0 remain
                 state_in[1:len(state_out)+1]=state_out
                 state_in[len(state_out)+1]=dalpha
                 state_in[0]=phase_list[s+1]
                 state_in[len(state_out)+2:]=history[-self.tau][:2]
+                print('history -tau')
+                print(history[-self.tau])
                 state_in.astype(float)
-            print(history)
+            
             return history
         
 

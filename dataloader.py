@@ -12,7 +12,7 @@ cols_to_keep_shift=['pitch', 'Cp']
 # cols_to_keep_shift=[]
 cols_to_keep_out = ['pitch', 'Cp','Cr','Cm']
 m=2
-tau=2
+tau=5
 
 if __name__=="__main__":
     df=pd.read_pickle("NNet_files/feedback_control_data.pkl")
