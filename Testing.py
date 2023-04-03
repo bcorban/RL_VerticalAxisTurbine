@@ -27,8 +27,8 @@ mlp.eval()
 
 R2_memory=[]
 
-for i,index in enumerate(test_index[:1]):
-    nsteps=100
+for i,index in enumerate(test_index[:2]):
+    nsteps=200
     
     
     # starting_state=testing_dataset.__getitem__(index)[0].float()
@@ -49,9 +49,10 @@ for i,index in enumerate(test_index[:1]):
     Y_pred2=np.array([mlp(testing_dataset.__getitem__(j)[0].float()).detach().numpy() for j in range(index,index+nsteps+1)])
     # R2_test= sklearn.metrics.r2_score(Y_truth,Y_pred)
     print("\n Ytruth")
-    print(Y_truth[:3,:])
+    print(np.array([testing_dataset.__getitem__(j)[0].detach().numpy() for j in range(index,index+nsteps+1)]))
     # R2_memory.append(R2_test)
-
+    print("\n Y_pred")
+    print(Y_pred)
     plt.figure()
     plt.plot(Y_truth[:,0])
     plt.plot(Y_pred[:,0])
@@ -65,17 +66,17 @@ for i,index in enumerate(test_index[:1]):
     plt.plot(Y_pred2[:,1])
     
     
-    plt.figure()
-    plt.title('Cr')
-    plt.plot(Y_truth[:,2])
-    plt.plot(Y_pred[:,2])
-    plt.plot(Y_pred2[:,2])
+    # plt.figure()
+    # plt.title('Cr')
+    # plt.plot(Y_truth[:,2])
+    # plt.plot(Y_pred[:,2])
+    # plt.plot(Y_pred2[:,2])
     
-    plt.figure()
-    plt.title('Cm')
-    plt.plot(Y_truth[:,3])
-    plt.plot(Y_pred[:,3])
-    plt.plot(Y_pred2[:,3])
+    # plt.figure()
+    # plt.title('Cm')
+    # plt.plot(Y_truth[:,3])
+    # plt.plot(Y_pred[:,3])
+    # plt.plot(Y_pred2[:,3])
     
 plt.show()
 

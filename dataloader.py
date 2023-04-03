@@ -7,12 +7,12 @@ import MLPmodel
 
 
 # cols_to_keep = ['phase', 'pitch', 'Cp','Ct','Cr','Cm']
-cols_to_keep_in = ['phase','pitch', 'Cp','Cr','Cm']
+cols_to_keep_in = ['phase','pitch', 'Cp']
 cols_to_keep_shift=['pitch', 'Cp']
 # cols_to_keep_shift=[]
-cols_to_keep_out = ['pitch', 'Cp','Cr','Cm']
+cols_to_keep_out = ['pitch', 'Cp']
 m=2
-tau=5
+tau=3
 
 if __name__=="__main__":
     df=pd.read_pickle("NNet_files/feedback_control_data.pkl")

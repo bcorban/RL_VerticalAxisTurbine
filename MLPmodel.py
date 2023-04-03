@@ -143,9 +143,9 @@ class MLP(nn.Module):
             print('Starting_state:')
             print(starting_state)
             state_in=starting_state[-1]
-            history=np.empty((0, 4))
-            for state in starting_state[1:]:
-                history=np.vstack((history,state[1:5]))
+            history=np.empty((0, 2))
+            for state in starting_state:
+                history=np.vstack((history,state[1:3]))
             print('history')
             print(history)            
             for s in range(n_steps-1):
@@ -160,12 +160,12 @@ class MLP(nn.Module):
                 state_in[1:len(state_out)+1]=state_out
                 state_in[len(state_out)+1]=dalpha
                 state_in[0]=phase_list[s+1]
-                state_in[len(state_out)+2:]=history[-self.tau][:2]
+                state_in[len(state_out)+2:]=history[-self.tau-1][:2]
                 print('history -tau')
-                print(history[-self.tau])
+                print(history[-self.tau-1])
                 state_in.astype(float)
             
-            return history
+            return history[1:]
         
 
 #-----------------------------------------------------------------------------
