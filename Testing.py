@@ -27,8 +27,8 @@ mlp.eval()
 
 R2_memory=[]
 
-for i,index in enumerate(test_index[:2]):
-    nsteps=200
+for i,index in enumerate(test_index[:3]):
+    nsteps=100
     
     
     # starting_state=testing_dataset.__getitem__(index)[0].float()
@@ -43,8 +43,8 @@ for i,index in enumerate(test_index[:2]):
 
     starting_state=np.array([testing_dataset.__getitem__(j)[0].float().detach().numpy() for j in range(index,index+(m-1)*tau)])
     Y_truth=np.array([testing_dataset.__getitem__(j)[1].detach().numpy() for j in range(index,index+nsteps+1)])
-    pitch_list=np.array([testing_dataset.__getitem__(j)[0].float().detach().numpy()[1] for j in range(index,index+nsteps+1)])
-    phase_list=np.array([testing_dataset.__getitem__(j)[0].float().detach().numpy()[0] for j in range(index,index+nsteps+1)])
+    pitch_list=np.array([testing_dataset.__getitem__(j)[0].float().detach().numpy()[1] for j in range(index+(m-1)*tau,index+nsteps+1)])
+    phase_list=np.array([testing_dataset.__getitem__(j)[0].float().detach().numpy()[0] for j in range(index+(m-1)*tau,index+nsteps+1)])
     Y_pred=mlp.predict_auto_regressive(starting_state,nsteps,pitch_list,phase_list)
     Y_pred2=np.array([mlp(testing_dataset.__getitem__(j)[0].float()).detach().numpy() for j in range(index,index+nsteps+1)])
     # R2_test= sklearn.metrics.r2_score(Y_truth,Y_pred)

@@ -125,7 +125,7 @@ class MLP(nn.Module):
         if self.m==1:
             
             state_in=starting_state.numpy()
-            history=np.empty((0, len(state_in)-2))
+            history=np.empty((0, len(state_in)-1))
             for s in range(n_steps-1):
                 print("in")
                 print(state_in)
@@ -148,7 +148,7 @@ class MLP(nn.Module):
                 history=np.vstack((history,state[1:3]))
             print('history')
             print(history)            
-            for s in range(n_steps-1):
+            for s in range(0,n_steps-(self.m-1)*self.tau-1):
                 print("in")
                 print(state_in)
                 print("out")
