@@ -8,9 +8,9 @@ import MLPmodel
 import numpy as np
 from dataloader import m,tau
 #Training parameters
-lr=0.7e-4
+lr=1e-4
 epoch=50
-model=[16,32,16]
+model=[128,128]
 batch_size=512
 
 #Dataset preparation

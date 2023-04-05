@@ -4,18 +4,27 @@ import matplotlib.pyplot as plt
 import random
 import torch
 import MLPmodel
+from scipy import signal
 
 
 # cols_to_keep = ['phase', 'pitch', 'Cp','Ct','Cr','Cm']
-cols_to_keep_in = ['phase','pitch', 'Cp']
-cols_to_keep_shift=['pitch', 'Cp']
+cols_to_keep_in = ['phase','pitch', 'Cp','Cr','Cm']
+cols_to_keep_shift=['pitch', 'Cp','Cr','Cm']
 # cols_to_keep_shift=[]
-cols_to_keep_out = ['pitch', 'Cp']
+cols_to_keep_out = ['pitch', 'Cp','Cr','Cm']
 m=2
-tau=3
+tau=10
 
 if __name__=="__main__":
     df=pd.read_pickle("NNet_files/feedback_control_data.pkl")
+    
+    #FILTERING STEP----------------------------------------
+    
+    b, a = signal.butter(8, 0.01)
+    y = signal.filtfilt(b, a, df['Cm'].values, padlen=150)
+    df['Cm']=y
+    
+    #----------------------------------------
     #NORMALIZATION STEP----------------------------------------
     # create numpy arrays to store the means and stds
     means = np.zeros((len(cols_to_keep_in),))
@@ -127,8 +136,7 @@ if __name__=="__main__":
             x_val=np.vstack((x_val,df_merged.values))
             y_val=np.vstack((y_val,df_no_first.values))
 
-    print(x_train)
-    print(y_train)
+
     T_x_train=torch.tensor(x_train)
     T_x_val=torch.tensor(x_val)
     T_x_test=torch.tensor(x_test)

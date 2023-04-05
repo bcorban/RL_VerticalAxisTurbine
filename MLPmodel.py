@@ -140,29 +140,29 @@ class MLP(nn.Module):
             print(history)
             return history
         elif self.m==2:
-            print('Starting_state:')
-            print(starting_state)
+            # print('Starting_state:')
+            # print(starting_state)
             state_in=starting_state[-1]
-            history=np.empty((0, 2))
+            history=np.empty((0, 4))
             for state in starting_state:
-                history=np.vstack((history,state[1:3]))
-            print('history')
-            print(history)            
-            for s in range(0,n_steps-(self.m-1)*self.tau-1):
-                print("in")
-                print(state_in)
-                print("out")
+                history=np.vstack((history,state[1:5]))
+            # print('history')
+            # print(history)            
+            for s in range(0,n_steps-(self.m-1)*self.tau):
+                # print("in")
+                # print(state_in)
+                # print("out")
                 state_out=self.__call__(torch.tensor(state_in)).detach().numpy()
-                print(state_out)
+                # print(state_out)
                 history=np.vstack((history,state_out))
                 dalpha=pitch_list[s+1]-state_out[0]
                 state_in=np.zeros(len(state_in)) #to be deleted, temporary to check if any 0 remain
                 state_in[1:len(state_out)+1]=state_out
                 state_in[len(state_out)+1]=dalpha
                 state_in[0]=phase_list[s+1]
-                state_in[len(state_out)+2:]=history[-self.tau-1][:2]
-                print('history -tau')
-                print(history[-self.tau-1])
+                state_in[len(state_out)+2:]=history[-self.tau-1][:4]
+                # print('history -tau')
+                # print(history[-self.tau-1])
                 state_in.astype(float)
             
             return history[1:]
