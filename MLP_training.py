@@ -10,7 +10,7 @@ from dataloader import m,tau
 #Training parameters
 lr=1e-4
 epoch=50
-model=[128,128]
+model=[128,128,128]
 batch_size=512
 
 #Dataset preparation

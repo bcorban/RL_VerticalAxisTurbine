@@ -32,7 +32,7 @@ mlp.eval()
 R2_memory=[]
 
 for i,index in enumerate(test_index[:-1]):
-    nsteps=200
+    nsteps=800
     
     
     # starting_state=testing_dataset.__getitem__(index)[0].float()
@@ -52,7 +52,7 @@ for i,index in enumerate(test_index[:-1]):
     Y_pred=mlp.predict_auto_regressive(starting_state,nsteps,pitch_list,phase_list)
     Y_pred2=np.array([mlp(testing_dataset.__getitem__(j)[0].float()).detach().numpy() for j in range(index,index+nsteps+1)])
 
-    R2_test= sklearn.metrics.r2_score(Y_truth[:-2],Y_pred)
+    R2_test= sklearn.metrics.r2_score(Y_truth[:-2,1],Y_pred[:,1])
     print(f"test n°{i} : R2 = {R2_test}")
     R2_memory.append(R2_test)
     # print("\n Ytruth")
