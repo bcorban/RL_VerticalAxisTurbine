@@ -13,7 +13,7 @@ cols_to_keep_shift=['pitch', 'Cp','Cr','Cm']
 # cols_to_keep_shift=[]
 cols_to_keep_out = ['pitch', 'Cp','Cr','Cm']
 m=2
-tau=7
+tau=10
 
 if __name__=="__main__":
     df=pd.read_pickle("NNet_files/feedback_control_data_seb.pkl")
@@ -50,9 +50,7 @@ if __name__=="__main__":
     #----------------------------------------
     df=df[::5]
     all_Cpmean = df['Cp_mean']
-    print(all_Cpmean)
     unique_Cp_mean = all_Cpmean.unique().tolist()
-    print(len(unique_Cp_mean ))
     
     # define the proportions of the three sets
     train_prop = 0.7
@@ -60,8 +58,8 @@ if __name__=="__main__":
     test_prop = 0.15
 
     # set the random seed for reproducibility
-    random.seed(123)
-
+    # random.seed(123)
+    random.seed(12)
     # calculate the number of elements in each category based on the proportions
     train_count = int(train_prop * len(unique_Cp_mean))
     val_count = int(val_prop * len(unique_Cp_mean))
@@ -98,7 +96,7 @@ if __name__=="__main__":
         # create a new dataframe that only includes rows with the current value
         sub_df = df[df['Cp_mean'] == value]
         
-        sub_df=sub_df.iloc[:1000,:]
+        sub_df=sub_df.iloc[2000:2400,:]
 
 
 
