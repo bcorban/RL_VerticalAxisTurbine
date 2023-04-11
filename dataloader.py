@@ -16,7 +16,7 @@ m=2
 tau=7
 
 if __name__=="__main__":
-    df=pd.read_pickle("NNet_files/feedback_control_data.pkl")
+    df=pd.read_pickle("NNet_files/feedback_control_data_seb.pkl")
     
     #FILTERING STEP----------------------------------------
     
@@ -50,8 +50,9 @@ if __name__=="__main__":
     #----------------------------------------
     df=df[::5]
     all_Cpmean = df['Cp_mean']
+    print(all_Cpmean)
     unique_Cp_mean = all_Cpmean.unique().tolist()
-
+    print(len(unique_Cp_mean ))
     
     # define the proportions of the three sets
     train_prop = 0.7
