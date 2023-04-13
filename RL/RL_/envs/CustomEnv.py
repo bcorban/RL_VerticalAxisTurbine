@@ -24,8 +24,13 @@ class CustomEnv(Env):
         
       
     def step(self, action):
-        partial_state=self.surrogate_model(torch.tensor(self.state[:5]+[action]+self.state[5:])).detach().numpy()
-        self.state=np.array([phase[tau+self.t],partial_state,self.history[self.t,5:]])
+        input=self.state
+        print(input)
+        input=np.insert(input,5,action)
+        print(action)
+        print(input)
+        partial_state=self.surrogate_model(torch.tensor(input)).detach().numpy()
+        self.state=np.array([phase[tau+self.t],partial_state,self.history[self.t,5:]],dtype=object)
         np.append(self.history,self.state)
         self.t+=1
         reward=self.state[2]
@@ -43,8 +48,10 @@ class CustomEnv(Env):
     
     def reset(self):
         self.state = self.starting_states[-1]
+        print(f"\n \n {self.state} \n \n")
         self.history=np.loadtxt("../data/starting_history.npy")
         self.t=0
+        
         return self.state
     def render (self, mode="human"):
         s = "state: {:2d}  reward: {:2d}  info: {}"
