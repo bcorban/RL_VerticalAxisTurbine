@@ -16,7 +16,7 @@ m=2
 tau=10
 
 if __name__=="__main__":
-    df=pd.read_pickle("data/feedback_control_data_seb.pkl")
+    df=pd.read_pickle("../data/feedback_control_data_seb.pkl")
     
     #FILTERING STEP----------------------------------------
     
