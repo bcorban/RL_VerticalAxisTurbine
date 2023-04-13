@@ -137,26 +137,20 @@ if __name__=="__main__":
 
     #USED TO GENERATE STARTING STATES FOR RL
     
-    # Cp_max=np.max(unique_Cp_mean)
-    # sub_df = df[df['Cp_mean'] == Cp_max]
+    Cp_max=np.max(unique_Cp_mean)
+    sub_df = df[df['Cp_mean'] == Cp_max]
         
-    # sub_df=sub_df.iloc[2000:2400,:]
-    # print(sub_df.values[:10])
-    # # create a new dataframe with only the selected columns and without the last row
-    # df_no_last = sub_df[cols_to_keep_in][:-1]
-
-    # #add column containing the 'pitch command'
-    
-    # df_no_last['pitch_increment'] = sub_df['pitch'].diff(periods=-1)[:-1]
-    # df_no_last['pitch_increment'] = -1*df_no_last['pitch_increment'] 
-    # if m==2:
-    #     df_no_last_shift=df_no_last.iloc[tau:].copy()
-    #     df_no_last_0 = df_no_last.iloc[:-tau].copy()
-    #     df_no_last_0= df_no_last_0.drop('pitch_increment', axis=1)
-    #     df_no_last_0=df_no_last_0[cols_to_keep_shift]
-    #     df_merged = pd.concat([df_no_last_shift.reset_index(drop=True),df_no_last_0.reset_index(drop=True)], axis=1)
-    # print(df_merged.values[:10])
-    # np.savetxt("./data/starting_history.npy",np.array(df_merged.values)[:10])
+    sub_df=sub_df.iloc[2000:2400,:]
+    # create a new dataframe with only the selected columns and without the last row
+    df_no_last = sub_df[cols_to_keep_in][:-1]
+    if m==2:
+        df_no_last_shift=df_no_last.iloc[tau:].copy()
+        df_no_last_0 = df_no_last.iloc[:-tau].copy()
+        df_no_last_0=df_no_last_0[cols_to_keep_shift]
+        df_merged = pd.concat([df_no_last_shift.reset_index(drop=True),df_no_last_0.reset_index(drop=True)], axis=1)
+    print(df_merged.values[:10])
+    np.savetxt("../data/starting_history.npy",np.array(df_merged.values)[:10])
+    np.savetxt("../data/phase.npy",np.array(df_merged.values)[:200,0])
 
 
     
