@@ -150,7 +150,7 @@ if __name__=="__main__":
         df_merged = pd.concat([df_no_last_shift.reset_index(drop=True),df_no_last_0.reset_index(drop=True)], axis=1)
     print(df_merged.values[:10])
     np.savetxt("../data/starting_history.npy",np.array(df_merged.values)[:10])
-    np.savetxt("../data/phase.npy",np.array(df_merged.values)[:200,0])
+    np.savetxt("../data/phase.npy",np.array(df_merged.values)[:,0])
 
 
     

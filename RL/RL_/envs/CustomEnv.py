@@ -25,13 +25,15 @@ class CustomEnv(Env):
       
     def step(self, action):
         input=self.state
-        print(input)
+        # print(input)
         input=np.insert(input,5,action)
-        print(action)
-        print(input)
+        # print(action)
+        # print(input)
         partial_state=self.surrogate_model(torch.tensor(input)).detach().numpy()
-        self.state=np.array([phase[tau+self.t],partial_state,self.history[self.t,5:]],dtype=object)
-        np.append(self.history,self.state)
+        self.state=np.concatenate((np.array([phase[tau+self.t]]),partial_state,self.history[self.t,5:]))
+      
+        self.history=np.vstack((self.history,self.state))
+        # print(np.shape(self.history))
         self.t+=1
         reward=self.state[2]
         
