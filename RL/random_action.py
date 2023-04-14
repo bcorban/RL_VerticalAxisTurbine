@@ -1,13 +1,13 @@
-import gym
+import gymnasium as gym
 import RL_
 
 def run_one_episode (env):
     env.reset()
     sum_reward = 0
-    done=False
-    while not done:
+    terminated=False
+    while not terminated:
         action = env.action_space.sample()
-        state, reward, done, info = env.step(action)
+        state, reward, terminated, truncated, info = env.step(action)
         sum_reward += reward
     return sum_reward
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # encoding: utf-8
-
+import tensorflow as tf
 from RL_.envs.CustomEnv import CustomEnv
+import RL_
 from ray.tune.registry import register_env
 import gymnasium as gym
 import os
@@ -24,7 +25,7 @@ def main ():
        # start Ray -- add `local_mode=True` here for debugging
     ray.init(ignore_reinit_error=True)
 
-    # register the custom environment
+    # register the custom environgit update-index --skip-worktree <path-name>ment
     select_env = "CustomEnv"
     #select_env = "fail-v1"
     register_env(select_env, lambda config: CustomEnv())
@@ -69,7 +70,7 @@ def main ():
     n_step = 20
 
     for step in range(n_step):
-        action = agent.compute_action(state)
+        action = agent.compute_single_action(tf.constant(state))
         state, reward, terminated, truncated, info = env.step(action)
         sum_reward += reward
 
