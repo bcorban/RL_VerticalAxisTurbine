@@ -1,21 +1,21 @@
 import numpy as np
-from gym import Env
-from gym.spaces import Box, Discrete
+from gymnasium import Env
+from gymnasium.spaces import Box, Discrete
 import random
 import sys
 import torch
-sys.path.append('/Users/baptiste/Desktop/EPFL/RL_VerticalAxisTurbine/')
+sys.path.append('/home/adminit/RL_VerticalAxisTurbine/')
 from surrogate_model.MLPmodel import MLP
 m=2
 tau=10
-mean=np.loadtxt("/Users/baptiste/Desktop/EPFL/RL_VerticalAxisTurbine/surrogate_model/NNet_files/means.txt") 
-std=np.loadtxt("/Users/baptiste/Desktop/EPFL/RL_VerticalAxisTurbine/surrogate_model/NNet_files/stds.txt")
-phase=np.loadtxt("/Users/baptiste/Desktop/EPFL/RL_VerticalAxisTurbine/data/phase.npy")
+mean=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/surrogate_model/NNet_files/means.txt") 
+std=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/surrogate_model/NNet_files/stds.txt")
+phase=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/data/phase.npy")
 
 class CustomEnv(Env):
     def __init__(self):
         self.action_space = self.action_space = Box(low=0.014, high=0.11, shape=(1,))
-        self.observation_space = Box(low=np.array([-2.5, -6 , -6, -15]), high=np.array([2.2, 7, 7, 3]))
+        self.observation_space = Box(low=np.array([-2,-2.5, -6 , -6, -15,-2.5, -6 , -6, -15]), high=np.array([2,2.2, 7, 7, 15,2.2, 7, 7, 15]))
         self.starting_states = np.loadtxt("../data/starting_history.npy")
         self.state = self.starting_states[-1]
         self.history=np.loadtxt("../data/starting_history.npy")
@@ -38,23 +38,23 @@ class CustomEnv(Env):
         reward=self.state[2]
         
         if self.t==200: 
-            done = True
+            terminated = True
         else:
-            done = False
-        
+            terminated = False
+        truncated =False
         info = {}
         
         # Return step information
-        return self.state, reward, done, info
+        return self.state, reward, terminated, truncated, info
     
     
-    def reset(self):
+    def reset(self,seed=0,options=None):
         self.state = self.starting_states[-1]
         print(f"\n \n {self.state} \n \n")
         self.history=np.loadtxt("../data/starting_history.npy")
         self.t=0
-        
-        return self.state
+        info={}
+        return self.state, info
     def render (self, mode="human"):
         s = "state: {:2d}  reward: {:2d}  info: {}"
         print(s.format(self.state[:5], self.reward, self.info))

@@ -2,30 +2,26 @@
 # encoding: utf-8
 
 from RL_.envs.CustomEnv import CustomEnv
-print(1)
 from ray.tune.registry import register_env
-print(1)
-import gym
+import gymnasium as gym
 import os
 import ray
-print(1)
 import ray.rllib.agents.ppo as ppo
 # import ray.rllib.agents.ppo as ppo
 import shutil
-print(1)
+
 
 def main ():
     # init directory in which to save checkpoints
-    print(1)
+
     chkpt_root = "tmp/exa"
     shutil.rmtree(chkpt_root, ignore_errors=True, onerror=None)
-    print(1)
+
     # init directory in which to log results
     ray_results = "{}/ray_results/".format(os.getenv("HOME"))
     shutil.rmtree(ray_results, ignore_errors=True, onerror=None)
 
-    print(1)
-    # start Ray -- add `local_mode=True` here for debugging
+       # start Ray -- add `local_mode=True` here for debugging
     ray.init(ignore_reinit_error=True)
 
     # register the custom environment
@@ -67,19 +63,19 @@ def main ():
     # apply the trained policy in a rollout
     agent.restore(chkpt_file)
     env = gym.make(select_env)
-
+    
     state = env.reset()
     sum_reward = 0
     n_step = 20
 
     for step in range(n_step):
         action = agent.compute_action(state)
-        state, reward, done, info = env.step(action)
+        state, reward, terminated, truncated, info = env.step(action)
         sum_reward += reward
 
         env.render()
 
-        if done == 1:
+        if terminated == 1:
             # report at the end of each episode
             print("cumulative reward", sum_reward)
             state = env.reset()
