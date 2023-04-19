@@ -1,17 +1,17 @@
 """
 This file trains the feed-forward network and is where the optimizer parameters and the architecture are entered.
 """
-
+import numpy as np
 import torch
 import torch.nn as nn
 import MLPmodel 
-import numpy as np
 from dataloader import m,tau
+import time
 #Training parameters
 lr=1e-4
-epoch=100
+epoch=20
 model=[64,128,64,32]
-batch_size=512
+batch_size=256
 
 #Dataset preparation
 
@@ -39,8 +39,10 @@ optimizer = torch.optim.Adam(mlp.parameters(), lr)
 
 
 #Training
+start_time=time.time()
 if __name__=="__main__":
     mlp.Train(model,epoch, train_loader, validation_loader, optimizer, loss_function)
 
     torch.save(mlp.state_dict(),"./NNet_files/trained_net.pt")
-
+end_time=time.time()
+print(f"Time taken : {(end_time-start_time)/60} minutes")

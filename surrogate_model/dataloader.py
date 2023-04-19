@@ -48,7 +48,7 @@ if __name__=="__main__":
     np.savetxt('NNet_files/means.txt', means)
     np.savetxt('NNet_files/stds.txt', stds)
     #----------------------------------------
-    df=df[::5]
+
     all_Cpmean = df['Cp_mean']
     unique_Cp_mean = all_Cpmean.unique().tolist()
     
@@ -92,68 +92,96 @@ if __name__=="__main__":
     test_index=[0]
 
     for i,value in enumerate(unique_Cp_mean[:]):
-        # print(i)
+        print(i)
         # create a new dataframe that only includes rows with the current value
         sub_df = df[df['Cp_mean'] == value]
+
+        # print(sub_df['phase'].values[0])
+        sub_df=sub_df.iloc[11270:11270+2*1127,:]
+
+        df_0=sub_df[cols_to_keep_shift][:-2*tau].reset_index(drop=True)
+        df_tau=sub_df[cols_to_keep_in][tau:-tau].reset_index(drop=True)
+        df_2tau=sub_df[cols_to_keep_out][2*tau:].reset_index(drop=True)
+
+        df_diff_pitch=df_2tau["pitch"]-df_tau["pitch"]
+        df_merged = pd.concat([df_tau,df_diff_pitch,df_0], axis=1)
+
+        if i<1:
+            np.savetxt("../data/phase.npy",np.array(df[df['Cp_mean'] == value][cols_to_keep_in][tau:-tau].reset_index(drop=True))[::tau,0])
+            #np.savetxt("../data/phase.npy",np.array(df_tau)[::tau,0])
+        category=categories_list[i]
         
-        sub_df=sub_df.iloc[2000:2400,:]
-
-
-
-        # create a new dataframe with only the selected columns and without the last row
-        df_no_last = sub_df[cols_to_keep_in][:-1]
-
-        #add column containing the 'pitch command'
-        
-        df_no_last['pitch_increment'] = sub_df['pitch'].diff(periods=-1)[:-1]
-        df_no_last['pitch_increment'] = -1*df_no_last['pitch_increment'] 
-        if m==2:
-            df_no_last_shift=df_no_last.iloc[tau:].copy()
-            df_no_last_0 = df_no_last.iloc[:-tau].copy()
-            df_no_last_0= df_no_last_0.drop('pitch_increment', axis=1)
-            df_no_last_0=df_no_last_0[cols_to_keep_shift]
-            df_merged = pd.concat([df_no_last_shift.reset_index(drop=True),df_no_last_0.reset_index(drop=True)], axis=1)
-            df_no_first = sub_df[cols_to_keep_out][tau+1:]
-            df_no_first = df_no_first.reset_index(drop=True)
-            category=categories_list[i]
-        elif m==1:
-            df_merged=df_no_last
-            df_no_first = sub_df[cols_to_keep_out][1:]
-            df_no_first = df_no_first.reset_index(drop=True)
-            category=categories_list[i]
-
         if category =='train':
             x_train=np.vstack((x_train,df_merged.values))
-            y_train=np.vstack((y_train,df_no_first.values))
+            y_train=np.vstack((y_train,df_2tau.values))
 
         elif category =='test':
             x_test=np.vstack((x_test,df_merged.values))
-            y_test=np.vstack((y_test,df_no_first.values))
+            y_test=np.vstack((y_test,df_2tau.values))
             test_index.append(len(x_test))
             
         elif category =='val':
             x_val=np.vstack((x_val,df_merged.values))
-            y_val=np.vstack((y_val,df_no_first.values))
+            y_val=np.vstack((y_val,df_2tau.values))
+    print(np.shape(x_test))
+    print(np.shape(y_test))
+
+        # # create a new dataframe with only the selected columns and without the last row
+        # df_no_last = sub_df[cols_to_keep_in][:-1]
+
+        # #add column containing the 'pitch command'
+        
+        # df_no_last['pitch_increment'] = sub_df['pitch'].diff(periods=-1)[:-1]
+        # df_no_last['pitch_increment'] = -1*df_no_last['pitch_increment']
+
+        # if m==2:
+        #     df_no_last_shift=df_no_last.iloc[tau:].copy()
+        #     df_no_last_0 = df_no_last.iloc[:-tau].copy()
+        #     df #tau frequencyf_merged = pd.concat([df_no_last_shift.reset_index(drop=True),df_no_last_0.reset_index(drop=True)], axis=1)
+        #     df_no_first = sub_df[cols_to_keep_out][tau+1:]
+        #     df_no_first = df_no_first.reset_index(drop=True)
+        #     category=categories_list[i]
+        # elif m==1:
+        #     df_merged=df_no_last
+        #     df_no_first = sub_df[cols_to_keep_out][1:]
+        #     df_no_first = df_no_first.reset_index(drop=True)
+        #     category=categories_list[i]
+
+        # if category =='train':
+        #     x_train=np.vstack((x_train,df_merged.values))
+        #     y_train=np.vstack((y_train,df_no_first.values))
+
+        # elif category =='test':
+        #     x_test=np.vstack((x_test,df_merged.values))
+        #     y_test=np.vstack((y_test,df_no_first.values))
+        #     test_index.append(len(x_test))
+        # elif category =='val':
+        #     x_val=np.vstack((x_val,df_merged.values))
+        #     y_val=np.vstack((y_val,df_no_first.values))
 
     #USED TO GENERATE STARTING STATES FOR RL
     
-    Cp_max=np.max(unique_Cp_mean)
-    sub_df = df[df['Cp_mean'] == Cp_max]
+    # Cp_max=np.max(unique_Cp_mean)
+    # sub_df = df[df['Cp_mean'] == Cp_max]
         
-    sub_df=sub_df.iloc[2000:2400,:]
-    # create a new dataframe with only the selected columns and without the last row
-    df_no_last = sub_df[cols_to_keep_in][:-1]
-    if m==2:
-        df_no_last_shift=df_no_last.iloc[tau:].copy()
-        df_no_last_0 = df_no_last.iloc[:-tau].copy()
-        df_no_last_0=df_no_last_0[cols_to_keep_shift]
-        df_merged = pd.concat([df_no_last_shift.reset_index(drop=True),df_no_last_0.reset_index(drop=True)], axis=1)
-    print(df_merged.values[:10])
-    np.savetxt("../data/starting_history.npy",np.array(df_merged.values)[:10])
-    np.savetxt("../data/phase.npy",np.array(df_merged.values)[:,0])
+    # sub_df=sub_df.iloc[2031:2431,:]
+    # # create a new dataframe with only the selected columns and without the last row
+    # df_no_last = sub_df[cols_to_keep_in][:-1]
+
+    # # if m==2:    print(df_no_last)
+    # #     df_no_last_shift=df_no_last.iloc[tau:].copy()
+    # #     df_no_last_0 = df_no_last.iloc[:-tau].copy()
+    # #     df_no_last_0=df_no_last_0[cols_to_keep_shift]
+    # #     df_merged = pd.concat([df_no_last_shift.reset_index(drop=True),df_no_last_0.reset_index(drop=True)], axis=1)
+    # # print(df_no_last[:10])
+    # # np.savetxt("../data/starting_history.npy",np.array(df_no_last)[:10])
+    # np.savetxt("../data/phase.npy",np.array(df_no_last)[:,0])
 
 
-    
+    print(f"training samples : {np.shape(x_train)[0]}")
+    print(f"validation samples : {np.shape(x_val)[0]}")
+    print(f"testing samples : {np.shape(x_test)[0]}")
+
     T_x_train=torch.tensor(x_train)
     T_x_val=torch.tensor(x_val)
     T_x_test=torch.tensor(x_test)
