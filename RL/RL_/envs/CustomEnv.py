@@ -82,5 +82,5 @@ class CustomEnv(Env):
 
 
     def render (self, mode="human"):
-        s = "state: {:2d}  reward: {:2d}  info: {}"
+        s = "t= {self.t} - state: {:2d} - reward: {:2d}  info: {}"
         print(s.format(self.state, self.reward, self.info))
