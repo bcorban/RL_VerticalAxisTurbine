@@ -9,8 +9,9 @@ from dataloader import m,tau
 import time
 #Training parameters
 lr=1e-4
-epoch=20
-model=[64,128,64,32]
+epoch=30
+# model=[64,128,64,32]
+model=[128,128]
 batch_size=256
 
 #Dataset preparation

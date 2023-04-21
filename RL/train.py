@@ -1,87 +1,116 @@
-#!/usr/bin/env python
-# encoding: utf-8
-import tensorflow as tf
-from RL_.envs.CustomEnv import CustomEnv
-import RL_
-from ray.tune.registry import register_env
 import gymnasium as gym
-import os
+import torch
+import numpy as np
 import ray
-import ray.rllib.agents.ppo as ppo
-# import ray.rllib.agents.ppo as ppo
-import shutil
+import RL_
+import matplotlib.pyplot as plt
+from RL_.envs.CustomEnv import CustomEnv,phase
+from ray.tune.logger import pretty_print
+from ray.rllib.algorithms.algorithm import Algorithm
+from ray.rllib.algorithms.ppo import PPO
+
+tau=30
+T=1127
+
+CONFIG = {
+    #COMMON config
+		"env": CustomEnv,
+		# "env_config": ENV_CONFIG, #the env config is the dictionary that's pass to the environment when built
+		"num_gpus": 0,
+		"num_workers": 4, # int(ressources['CPU'])
+		"explore": True,
+		"exploration_config": {
+			"type": "StochasticSampling",
+		},
+    "framework": "torch", #I prefer tensorflow but feel free to use pytorch
+    # PPO config
+    "gamma": 1,
+    "use_critic": True,
+    "use_gae": True, #Generalized Advantage Estimate
+    "lambda": 1,
+    "kl_coeff": 0.2,
+    "rollout_fragment_length":256, #number of steps in the environment for each Rollout Worker
+    "train_batch_size": 1024, 
+    "sgd_minibatch_size": 64,
+    "shuffle_sequences": True, #Kind of experience replay for PPO
+    "num_sgd_iter": 16,
+    "lr": 1e-4,
+    "lr_schedule": None,
+    "vf_loss_coeff": 1.0,
+    "model": {
+        "fcnet_hiddens":[128,128],
+        "fcnet_activation":"relu",
+        "vf_share_layers": False, 
+    },
+    "entropy_coeff": 0.0,
+    "entropy_coeff_schedule": None,
+    "clip_param": 0.1,
+    "vf_clip_param": 10.0,
+    "grad_clip": None,
+    "observation_filter": "NoFilter"
+	}
 
 
-def main ():
-    # init directory in which to save checkpoints
+train=True
+ray.shutdown() #shutdown before re-init
+ray.init() #re-init
+algo = PPO(config=CONFIG)
 
-    chkpt_root = "tmp/exa"
-    shutil.rmtree(chkpt_root, ignore_errors=True, onerror=None)
+if train:
+    for epoch in range(100):
+        result=algo.train()
+        print('epoch : ',epoch)
+        # print(pretty_print(result))
 
-    # init directory in which to log results
-    ray_results = "{}/ray_results/".format(os.getenv("HOME"))
-    shutil.rmtree(ray_results, ignore_errors=True, onerror=None)
+    checkpoint_dir = algo.save() #save the model 
+    print(f"Checkpoint saved in directory {checkpoint_dir}") 
+    ray.shutdown()
+else:
+    checkpoint_dir="/home/adminit/ray_results/PPO_CustomEnv_2023-04-21_11-43-05bgfkn3fq/checkpoint_000100"
+    ray.shutdown()
 
-       # start Ray -- add `local_mode=True` here for debugging
-    ray.init(ignore_reinit_error=True)
+algo = Algorithm.from_checkpoint(checkpoint_dir) #load the state of the algorithm where it was : Optimizer state, weights, ...
+# policy=algo.get_policy() #get the policy 
 
-    # register the custom environgit update-index --skip-worktree <path-name>ment
-    select_env = "CustomEnv"
-    #select_env = "fail-v1"
-    register_env(select_env, lambda config: CustomEnv())
-    #register_env(select_env, lambda config: Fail_v1())
+env = gym.make('CustomEnv')
+episode_reward = 0
+d = False
+s,i = env.reset()
+hist=np.array([-1.66706679, -0.36840033, -0.46035629, -0.99126627,  0.57170272, -0.26434656, -0.36760229, -1.73953709,  1.47209849],dtype='float32')
+pitch_from_action_list=[-0.36840033]
 
-    print(1)
-    # configure the environment and create agent
-    config = ppo.DEFAULT_CONFIG.copy()
-    config["log_level"] = "WARN"
-    agent = ppo.PPOTrainer(config, env=select_env)
-
-    status = "{:2d} reward {:6.2f}/{:6.2f}/{:6.2f} len {:4.2f} saved {}"
-    n_iter = 5
-
-    # train a policy with RLlib using PPO
-    for n in range(n_iter):
-        result = agent.train()
-        chkpt_file = agent.save(chkpt_root)
-
-        print(status.format(
-                n + 1,
-                result["episode_reward_min"],
-                result["episode_reward_mean"],
-                result["episode_reward_max"],
-                result["episode_len_mean"],
-                chkpt_file
-                ))
-
-
-    # examine the trained policy
-    policy = agent.get_policy()
-    model = policy.model
-    print(model.base_model.summary())
-
-
-    # apply the trained policy in a rollout
-    agent.restore(chkpt_file)
-    env = gym.make(select_env)
+while not d:
     
-    state = env.reset()
-    sum_reward = 0
-    n_step = 20
+    # logits,_= policy.model({'obs':torch.from_numpy( np.expand_dims(s,axis=0).astype(float))})
+    # # help(policy.model)
+    # # print(policy.model({'obs':torch.from_numpy( np.expand_dims(s,axis=0).astype(float))}))
+    # a=np.argmax(logits.detach().numpy())
+    # s,r,d,t,i= env.step(a)
+    # print(f"timestep : {b}, action : {a}")
+    # b+=1
 
-    for step in range(n_step):
-        action = agent.compute_single_action(tf.constant(state))
-        state, reward, terminated, truncated, info = env.step(action)
-        sum_reward += reward
+    # hist=np.vstack((hist,s))
 
-        env.render()
+    a= algo.compute_single_action(s)
+    pitch_from_action_list.append(pitch_from_action_list[-1]+a[0])
+    s,r,d,t,i= env.step(a[0])
+    hist=np.vstack((hist,s))
+    episode_reward += r
+    env.render()
 
-        if terminated == 1:
-            # report at the end of each episode
-            print("cumulative reward", sum_reward)
-            state = env.reset()
-            sum_reward = 0
+env.close()
+print(f"\n episode reward: {episode_reward} -- Cp_mean={(episode_reward*13)/int(T/tau)-6}\n")
 
+print(len(hist[:,0]))
+plt.figure()
+plt.title("pitch")
+plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,1],'o-')
+plt.plot((np.array(list(range(len(hist[:,0]))))/int(T/tau))[:],pitch_from_action_list,'-')
+plt.figure()
+plt.title("Cp")
+plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,2],'o-')
+plt.figure()
+plt.title("phase")
+plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,0],'o-')
 
-if __name__ == "__main__":
-    main()
+plt.show()

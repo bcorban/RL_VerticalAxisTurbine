@@ -146,7 +146,8 @@ class MLP(nn.Module):
             history=starting_state[1:5]
             for s in range(0,n_steps-1):
                 # print("in")
-                # print(state_in)
+                # if s<3:
+                #     print(state_in)
                 # print("out")
                 state_out=self.__call__(torch.tensor(state_in)).detach().numpy()
                 
@@ -156,10 +157,9 @@ class MLP(nn.Module):
                 state_in=np.zeros(len(state_in)) #to be deleted, temporary to check if any 0 remain
                 state_in[1:len(state_out)+1]=state_out
                 state_in[len(state_out)+1]=dalpha
+                # print(dalpha)
                 state_in[0]=phase_list[s+1]
                 state_in[len(state_out)+2:]=history[-2][:4]
-                # print('history -tau')
-                # print(history[-self.tau-1])
                 state_in.astype(float)
             
             return history[1:]

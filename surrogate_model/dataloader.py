@@ -13,7 +13,7 @@ cols_to_keep_shift=['pitch', 'Cp','Cr','Cm']
 # cols_to_keep_shift=[]
 cols_to_keep_out = ['pitch', 'Cp','Cr','Cm']
 m=2
-tau=10
+tau=30
 
 if __name__=="__main__":
     df=pd.read_pickle("../data/feedback_control_data_seb.pkl")
@@ -82,7 +82,8 @@ if __name__=="__main__":
 
     # shuffle the categories list randomly
     random.shuffle(categories_list)
-
+    # print(categories_list[178])
+    # categories_list[178]='test'
     x_train=np.empty((0, len(cols_to_keep_in)+(m-1)*len(cols_to_keep_shift)+1))
     x_val=np.empty((0, len(cols_to_keep_in)+(m-1)*len(cols_to_keep_shift)+1))
     x_test=np.empty((0, len(cols_to_keep_in)+(m-1)*len(cols_to_keep_shift)+1))
@@ -90,14 +91,16 @@ if __name__=="__main__":
     y_val=np.empty((0, len(cols_to_keep_out)))
     y_test=np.empty((0, len(cols_to_keep_out)))
     test_index=[0]
-
+    list_max=[]
+    list_min=[]
+    list_mean=[]
     for i,value in enumerate(unique_Cp_mean[:]):
         print(i)
         # create a new dataframe that only includes rows with the current value
         sub_df = df[df['Cp_mean'] == value]
 
         # print(sub_df['phase'].values[0])
-        sub_df=sub_df.iloc[11270:11270+2*1127,:]
+        sub_df=sub_df.iloc[11270:11270+3*1127,:]
 
         df_0=sub_df[cols_to_keep_shift][:-2*tau].reset_index(drop=True)
         df_tau=sub_df[cols_to_keep_in][tau:-tau].reset_index(drop=True)
@@ -105,9 +108,11 @@ if __name__=="__main__":
 
         df_diff_pitch=df_2tau["pitch"]-df_tau["pitch"]
         df_merged = pd.concat([df_tau,df_diff_pitch,df_0], axis=1)
-
+        list_max.append(np.max(df_diff_pitch))
+        list_min.append(np.min(df_diff_pitch))
+        list_mean.append(np.mean(df_diff_pitch))
         if i<1:
-            np.savetxt("../data/phase.npy",np.array(df[df['Cp_mean'] == value][cols_to_keep_in][tau:-tau].reset_index(drop=True))[::tau,0])
+            np.savetxt("../data/phase.npy",np.array(df[df['Cp_mean'] == value][cols_to_keep_in].iloc[11270:11270+3*1127,:][tau:-tau].reset_index(drop=True))[::tau,0])
             #np.savetxt("../data/phase.npy",np.array(df_tau)[::tau,0])
         category=categories_list[i]
         
@@ -123,9 +128,9 @@ if __name__=="__main__":
         elif category =='val':
             x_val=np.vstack((x_val,df_merged.values))
             y_val=np.vstack((y_val,df_2tau.values))
-    print(np.shape(x_test))
-    print(np.shape(y_test))
-
+    # print(list_max)
+    # print(list_min)
+    # print(list_mean)
         # # create a new dataframe with only the selected columns and without the last row
         # df_no_last = sub_df[cols_to_keep_in][:-1]
 
@@ -160,22 +165,19 @@ if __name__=="__main__":
         #     y_val=np.vstack((y_val,df_no_first.values))
 
     #USED TO GENERATE STARTING STATES FOR RL
-    
-    # Cp_max=np.max(unique_Cp_mean)
-    # sub_df = df[df['Cp_mean'] == Cp_max]
-        
-    # sub_df=sub_df.iloc[2031:2431,:]
-    # # create a new dataframe with only the selected columns and without the last row
-    # df_no_last = sub_df[cols_to_keep_in][:-1]
+    i_Cpmax=np.argmax(unique_Cp_mean)
+    Cp_max=np.max(unique_Cp_mean)
+    print(i_Cpmax)
+    print(Cp_max)
+    sub_df = df[df['Cp_mean'] == Cp_max]
+    sub_df=sub_df.iloc[11270:11270+3*1127,:]
+    df_0=sub_df[cols_to_keep_shift][:-2*tau].reset_index(drop=True)
+    df_tau=sub_df[cols_to_keep_in][tau:-tau].reset_index(drop=True)
+    df_2tau=sub_df[cols_to_keep_out][2*tau:].reset_index(drop=True)
 
-    # # if m==2:    print(df_no_last)
-    # #     df_no_last_shift=df_no_last.iloc[tau:].copy()
-    # #     df_no_last_0 = df_no_last.iloc[:-tau].copy()
-    # #     df_no_last_0=df_no_last_0[cols_to_keep_shift]
-    # #     df_merged = pd.concat([df_no_last_shift.reset_index(drop=True),df_no_last_0.reset_index(drop=True)], axis=1)
-    # # print(df_no_last[:10])
-    # # np.savetxt("../data/starting_history.npy",np.array(df_no_last)[:10])
-    # np.savetxt("../data/phase.npy",np.array(df_no_last)[:,0])
+    df_diff_pitch=df_2tau["pitch"]-df_tau["pitch"]
+    df_merged = pd.concat([df_tau,df_diff_pitch,df_0], axis=1)
+    print(df_merged.values[::tau][:4])
 
 
     print(f"training samples : {np.shape(x_train)[0]}")
