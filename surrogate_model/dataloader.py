@@ -58,7 +58,7 @@ if __name__=="__main__":
     test_prop = 0.15
 
     # set the random seed for reproducibility
-    # random.seed(123)
+
     random.seed(12)
     # calculate the number of elements in each category based on the proportions
     train_count = int(train_prop * len(unique_Cp_mean))
@@ -82,8 +82,7 @@ if __name__=="__main__":
 
     # shuffle the categories list randomly
     random.shuffle(categories_list)
-    # print(categories_list[178])
-    # categories_list[178]='test'
+
     x_train=np.empty((0, len(cols_to_keep_in)+(m-1)*len(cols_to_keep_shift)+1))
     x_val=np.empty((0, len(cols_to_keep_in)+(m-1)*len(cols_to_keep_shift)+1))
     x_test=np.empty((0, len(cols_to_keep_in)+(m-1)*len(cols_to_keep_shift)+1))
@@ -99,18 +98,16 @@ if __name__=="__main__":
         # create a new dataframe that only includes rows with the current value
         sub_df = df[df['Cp_mean'] == value]
 
-        # print(sub_df['phase'].values[0])
-        sub_df=sub_df.iloc[11270:11270+3*1127,:]
 
+        sub_df=sub_df.iloc[11270:11270+3*1127,:]
         df_0=sub_df[cols_to_keep_shift][:-2*tau].reset_index(drop=True)
         df_tau=sub_df[cols_to_keep_in][tau:-tau].reset_index(drop=True)
         df_2tau=sub_df[cols_to_keep_out][2*tau:].reset_index(drop=True)
-
         df_diff_pitch=df_2tau["pitch"]-df_tau["pitch"]
         df_merged = pd.concat([df_tau,df_diff_pitch,df_0], axis=1)
-        list_max.append(np.max(df_diff_pitch))
-        list_min.append(np.min(df_diff_pitch))
-        list_mean.append(np.mean(df_diff_pitch))
+        # list_max.append(np.max(df_diff_pitch))
+        # list_min.append(np.min(df_diff_pitch))
+        # list_mean.append(np.mean(df_diff_pitch))
         if i<1:
             np.savetxt("../data/phase.npy",np.array(df[df['Cp_mean'] == value][cols_to_keep_in].iloc[11270:11270+3*1127,:][tau:-tau].reset_index(drop=True))[::tau,0])
             #np.savetxt("../data/phase.npy",np.array(df_tau)[::tau,0])
@@ -131,44 +128,11 @@ if __name__=="__main__":
     # print(list_max)
     # print(list_min)
     # print(list_mean)
-        # # create a new dataframe with only the selected columns and without the last row
-        # df_no_last = sub_df[cols_to_keep_in][:-1]
-
-        # #add column containing the 'pitch command'
-        
-        # df_no_last['pitch_increment'] = sub_df['pitch'].diff(periods=-1)[:-1]
-        # df_no_last['pitch_increment'] = -1*df_no_last['pitch_increment']
-
-        # if m==2:
-        #     df_no_last_shift=df_no_last.iloc[tau:].copy()
-        #     df_no_last_0 = df_no_last.iloc[:-tau].copy()
-        #     df #tau frequencyf_merged = pd.concat([df_no_last_shift.reset_index(drop=True),df_no_last_0.reset_index(drop=True)], axis=1)
-        #     df_no_first = sub_df[cols_to_keep_out][tau+1:]
-        #     df_no_first = df_no_first.reset_index(drop=True)
-        #     category=categories_list[i]
-        # elif m==1:
-        #     df_merged=df_no_last
-        #     df_no_first = sub_df[cols_to_keep_out][1:]
-        #     df_no_first = df_no_first.reset_index(drop=True)
-        #     category=categories_list[i]
-
-        # if category =='train':
-        #     x_train=np.vstack((x_train,df_merged.values))
-        #     y_train=np.vstack((y_train,df_no_first.values))
-
-        # elif category =='test':
-        #     x_test=np.vstack((x_test,df_merged.values))
-        #     y_test=np.vstack((y_test,df_no_first.values))
-        #     test_index.append(len(x_test))
-        # elif category =='val':
-        #     x_val=np.vstack((x_val,df_merged.values))
-        #     y_val=np.vstack((y_val,df_no_first.values))
 
     #USED TO GENERATE STARTING STATES FOR RL
     i_Cpmax=np.argmax(unique_Cp_mean)
     Cp_max=np.max(unique_Cp_mean)
-    print(i_Cpmax)
-    print(Cp_max)
+
     sub_df = df[df['Cp_mean'] == Cp_max]
     sub_df=sub_df.iloc[11270:11270+3*1127,:]
     df_0=sub_df[cols_to_keep_shift][:-2*tau].reset_index(drop=True)
@@ -177,7 +141,6 @@ if __name__=="__main__":
 
     df_diff_pitch=df_2tau["pitch"]-df_tau["pitch"]
     df_merged = pd.concat([df_tau,df_diff_pitch,df_0], axis=1)
-    print(df_merged.values[::tau][:4])
 
 
     print(f"training samples : {np.shape(x_train)[0]}")

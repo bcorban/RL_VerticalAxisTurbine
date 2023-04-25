@@ -4,15 +4,16 @@ import numpy as np
 import ray
 import RL_
 import matplotlib.pyplot as plt
-from RL_.envs.CustomEnv import CustomEnv,phase
+from RL_.envs.CustomEnv import CustomEnv,phase,mean,std
 from ray.tune.logger import pretty_print
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.ppo import PPO
-
+from ray.rllib.algorithms.sac import SAC,SACConfig
+from custom_callbacks import CustomCallbacks
 tau=30
 T=1127
 
-CONFIG = {
+CONFIG_PPO = {
     #COMMON config
 		"env": CustomEnv,
 		# "env_config": ENV_CONFIG, #the env config is the dictionary that's pass to the environment when built
@@ -34,11 +35,11 @@ CONFIG = {
     "sgd_minibatch_size": 64,
     "shuffle_sequences": True, #Kind of experience replay for PPO
     "num_sgd_iter": 16,
-    "lr": 1e-4,
+    "lr": 0.5e-4,
     "lr_schedule": None,
     "vf_loss_coeff": 1.0,
     "model": {
-        "fcnet_hiddens":[128,128],
+        "fcnet_hiddens":[36,36],
         "fcnet_activation":"relu",
         "vf_share_layers": False, 
     },
@@ -50,28 +51,51 @@ CONFIG = {
     "observation_filter": "NoFilter"
 	}
 
+CONFIG_SAC={
+#COMMON config
+        "log_level": "INFO",
+		"env": CustomEnv,
+		# "env_config": ENV_CONFIG, #the env config is the dictionary that's pass to the environment when built
+		"num_gpus": 0,
+		"num_workers": 4, # int(ressources['CPU'])
+		"explore": True,
+		"exploration_config": {
+			"type": "StochasticSampling",
+		},
+    "framework": "torch",
+    "callbacks":CustomCallbacks,
+     "prioritized_replay": False,
+     "gamma": 1
+}
 
 train=True
+ALGO=["SAC","PPO"][0] 
+
 ray.shutdown() #shutdown before re-init
 ray.init() #re-init
-algo = PPO(config=CONFIG)
+if ALGO=="SAC":
+    algo = SAC(config=CONFIG_SAC)
+elif ALGO=="PPO":
+    algo = PPO(config=CONFIG_PPO)
 
 if train:
-    for epoch in range(100):
+    for epoch in range(4000):
         result=algo.train()
         print('epoch : ',epoch)
         # print(pretty_print(result))
-
+        if epoch%1000==0:
+            checkpoint_dir = algo.save()
+            print(f"Checkpoint saved in directory {checkpoint_dir}")
     checkpoint_dir = algo.save() #save the model 
     print(f"Checkpoint saved in directory {checkpoint_dir}") 
     ray.shutdown()
 else:
-    checkpoint_dir="/home/adminit/ray_results/PPO_CustomEnv_2023-04-21_11-43-05bgfkn3fq/checkpoint_000100"
+    checkpoint_dir="/home/adminit/ray_results/SAC_CustomEnv_2023-04-24_10-49-17rajg2pu6/checkpoint_000200"
     ray.shutdown()
 
 algo = Algorithm.from_checkpoint(checkpoint_dir) #load the state of the algorithm where it was : Optimizer state, weights, ...
 # policy=algo.get_policy() #get the policy 
-
+algo.get_policy().config["explore"] = False
 env = gym.make('CustomEnv')
 episode_reward = 0
 d = False
@@ -99,18 +123,18 @@ while not d:
     env.render()
 
 env.close()
-print(f"\n episode reward: {episode_reward} -- Cp_mean={(episode_reward*13)/int(T/tau)-6}\n")
+print(f"\n episode reward: {episode_reward} -- Cp_mean={(13*episode_reward/int(T/tau)-6)*std[2]+mean[2]}\n")
 
 print(len(hist[:,0]))
 plt.figure()
 plt.title("pitch")
-plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,1],'o-')
-plt.plot((np.array(list(range(len(hist[:,0]))))/int(T/tau))[:],pitch_from_action_list,'-')
+plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,1]*std[1]+mean[1],'o-')
+plt.plot((np.array(list(range(len(hist[:,0]))))/int(T/tau))[:],np.array(pitch_from_action_list)*std[1]+mean[1],'-')
 plt.figure()
 plt.title("Cp")
-plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,2],'o-')
+plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,2]*std[2]+mean[2],'o-')
 plt.figure()
 plt.title("phase")
-plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,0],'o-')
+plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,0]*std[0]+mean[0],'o-')
 
 plt.show()
