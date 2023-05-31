@@ -5,14 +5,14 @@ import random
 import sys
 import torch
 import math
-sys.path.append('/home/adminit/RL_VerticalAxisTurbine/Fake_Carrousel/')
+sys.path.append('/home/adminit/RL_VerticalAxisTurbine/Fake_Carousel/')
 from surrogate_model.MLPmodel import MLP
 m=2
 tau=30
 T=1127
-mean=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/Fake_Carrousel/surrogate_model/NNet_files/means.txt") 
-std=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/Fake_Carrousel/surrogate_model/NNet_files/stds.txt")
-phase=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/Fake_Carrousel/data/phase.npy")
+mean=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/Fake_Carousel/surrogate_model/NNet_files/means.txt") 
+std=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/Fake_Carousel/surrogate_model/NNet_files/stds.txt")
+phase=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/Fake_Carousel/data/phase.npy")
 
 class CustomEnv(Env):
     def __init__(self,dict_env={}) -> None:
@@ -24,14 +24,16 @@ class CustomEnv(Env):
         self.state = np.array([-1.66706679, -0.36840033, -0.46035629, -0.99126627,  0.57170272, -0.26434656, -0.36760229, -1.73953709,  1.47209849],dtype='float32')
         # self.history=np.array([[phase[0], -1.4451,-2.6568, -1.79957, 3.21946], self.state],dtype='float32')
         self.surrogate_model= MLP(10,4,[128,128],mean,std, m,tau)
-        self.surrogate_model.load_state_dict(torch.load("/home/adminit/RL_VerticalAxisTurbine/Fake_Carrousel/surrogate_model/NNet_files/trained_net.pt")) #loads trained MLP
+        self.surrogate_model.load_state_dict(torch.load("/home/adminit/RL_VerticalAxisTurbine/Fake_Carousel/surrogate_model/NNet_files/trained_net.pt")) #loads trained MLP
         self.surrogate_model.eval()
         self.t=0
         self.reward=0
         self.bounds={"pitch":(-2.80,2.80),"Cp":(-7,7),"Cr":(-6,6),"Cm":(-15,16)}
+        print("init")
     
         
     def step(self, action):
+        print("step")
         input=self.state
 
         input=np.insert(input,5,action)
@@ -83,6 +85,7 @@ class CustomEnv(Env):
 
         
     def reset(self,seed=None,options=None):
+        print("reset")
         self.state = np.array([-1.66706679, -0.36840033, -0.46035629, -0.99126627,  0.57170272, -0.26434656, -0.36760229, -1.73953709,  1.47209849],dtype='float32')
         self.t=0
         self.reward=0

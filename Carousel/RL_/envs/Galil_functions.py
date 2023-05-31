@@ -21,19 +21,10 @@ def read_state(g,offset):
     volts_raw=galil_output[0:5]
     volts=-(volts_raw)-offset
     phase= galil_output['phase_index'] / m[1]['ms'] % 360# In degrees
-    phase_cont = galil_output(6) / m(1).ms #In degrees
+    phase_cont = galil_output(6) / m[1]['ms']  #In degrees
         
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     return np.zeros(3)
 
 def start_E(g):

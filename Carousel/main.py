@@ -4,6 +4,9 @@ import gclib
 import nidaqmx
 from nidaqmx import stream_readers
 from train import RL_loop
+import matlab.engine
+import time
+
 g=gclib.py()
 c=g.GCommand
 
@@ -53,23 +56,26 @@ c("AQ7, -1")
 c("AQ8, 1")
 
 #----------------Start the loadcell--------------------
-# with nidaqmx.Task() as task:
-#     for i in NI['channels']:
-#         task.ai_channels.add_ai_voltage_chan(f"/{NI['device']}/ai{i}")
-#         task.timing.cfg_samp_clk_timing()
-#         stream=stream_readers.AnalogMultiChannelReader
-        
+eng = matlab.engine.start_matlab()
+
+path = "/Users/PIVUSER/Documents/MATLAB"
+
+eng.addpath(path, nargout= 0 )
+
+path = "/Users/PIVUSER/Desktop/tmp_baptiste/Carousel"
+
+eng.addpath(path, nargout= 0 )
+
+eng.start_lc(nargout=0)
+t_start=time.time()
 #--------------------------------
 
 RL_loop(c)
 
 
-#-------Stop loadcell
-
-
-
-
-
+#-------Stop loadcel
+eng.stop_lc(nargout=0)
+d=eng.workspace['d']
 
 
 
