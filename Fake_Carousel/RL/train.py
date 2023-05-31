@@ -10,8 +10,34 @@ from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.algorithms.ppo import PPO
 from ray.rllib.algorithms.sac import SAC,SACConfig
 from custom_callbacks import CustomCallbacks
+from ray.rllib.utils.replay_buffers.replay_buffer import ReplayBuffer
+
 tau=30
 T=1127
+params = {"ytick.color" : "black",
+          "xtick.color" : "black",
+          "axes.labelcolor" : "black",
+          "axes.edgecolor" : "black",
+          "text.usetex" : True,
+          "font.family" : "serif",
+          "font.serif" : ["Times"],
+          "font.size":15}
+plt.rcParams.update(params)
+
+
+
+class CustomReplayBuffer(ReplayBuffer):
+    def add(self, data):
+        # Check the condition based on the state information
+        if self.should_store_transition(data):
+            
+            print(data.__getitem__('default_policy').__getitem__('obs')[0][0])
+            super().add(data)
+
+    def should_store_transition(self, data):
+        # Implement your condition here based on the state information
+        # For example, if the position is in the state, you can check if it meets your criteria
+        return data.__getitem__('default_policy').__getitem__('obs')[0][0]>360*3
 
 CONFIG_PPO = {
     #COMMON config
@@ -22,6 +48,7 @@ CONFIG_PPO = {
 		"explore": True,
 		"exploration_config": {
 			"type": "StochasticSampling",
+
 		},
     "framework": "torch", #I prefer tensorflow but feel free to use pytorch
     # PPO config
@@ -57,16 +84,19 @@ CONFIG_SAC={
 		"env": CustomEnv,
 		# "env_config": ENV_CONFIG, #the env config is the dictionary that's pass to the environment when built
 		"num_gpus": 0,
-		"num_workers": 4, # int(ressources['CPU'])
+		"num_workers": 0, # int(ressources['CPU'])
 		"explore": True,
 		"exploration_config": {
 			"type": "StochasticSampling",
 		},
+  "replay_buffer_config": {"type" :CustomReplayBuffer,},
     "framework": "torch",
     "callbacks":CustomCallbacks,
-     "prioritized_replay": False,
+     "prioritized_replay": True,
      "gamma": 1
 }
+
+
 
 train=True
 ALGO=["SAC","PPO"][0] 
@@ -79,18 +109,19 @@ elif ALGO=="PPO":
     algo = PPO(config=CONFIG_PPO)
 
 if train:
-    for epoch in range(4000):
+    for epoch in range(150):
         result=algo.train()
+        # print(result)
         print('epoch : ',epoch)
         # print(pretty_print(result))
-        if epoch%1000==0:
-            checkpoint_dir = algo.save()
-            print(f"Checkpoint saved in directory {checkpoint_dir}")
+        # if epoch%1000==0:
+        #     checkpoint_dir = algo.save()
+        #     print(f"Checkpoint saved in directory {checkpoint_dir}")
     checkpoint_dir = algo.save() #save the model 
     print(f"Checkpoint saved in directory {checkpoint_dir}") 
     ray.shutdown()
 else:
-    checkpoint_dir="/home/adminit/ray_results/SAC_CustomEnv_2023-04-24_10-49-17rajg2pu6/checkpoint_000200"
+    checkpoint_dir="/home/adminit/ray_results/SAC_CustomEnv_2023-04-26_16-51-24e08kmjvx/checkpoint_000150"
     ray.shutdown()
 
 algo = Algorithm.from_checkpoint(checkpoint_dir) #load the state of the algorithm where it was : Optimizer state, weights, ...
@@ -116,6 +147,7 @@ while not d:
     # hist=np.vstack((hist,s))
 
     a= algo.compute_single_action(s)
+    print(a)
     pitch_from_action_list.append(pitch_from_action_list[-1]+a[0])
     s,r,d,t,i= env.step(a[0])
     hist=np.vstack((hist,s))
@@ -123,18 +155,24 @@ while not d:
     env.render()
 
 env.close()
-print(f"\n episode reward: {episode_reward} -- Cp_mean={(13*episode_reward/int(T/tau)-6)*std[2]+mean[2]}\n")
+print(f"\n episode reward: {episode_reward} -- Cp_mean={(6*episode_reward/int(T/tau)-6)*std[2]+mean[2]}\n")
 
 print(len(hist[:,0]))
 plt.figure()
-plt.title("pitch")
-plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,1]*std[1]+mean[1],'o-')
-plt.plot((np.array(list(range(len(hist[:,0]))))/int(T/tau))[:],np.array(pitch_from_action_list)*std[1]+mean[1],'-')
+plt.ylabel("$\\alpha$")
+plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,1]*std[1]+mean[1],'o-',color='black')
+plt.plot((np.array(list(range(len(hist[:,0]))))/int(T/tau))[:],np.array(pitch_from_action_list)*std[1]+mean[1],'-',color='black',alpha=0.5)
+plt.xlabel("$t/T$")
+plt.grid()
+
 plt.figure()
-plt.title("Cp")
-plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,2]*std[2]+mean[2],'o-')
+plt.ylabel("$C_p$")
+plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,2]*std[2]+mean[2],'o-',color='black')
+plt.xlabel("$t/T$")
+plt.grid()
+
 plt.figure()
 plt.title("phase")
 plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,0]*std[0]+mean[0],'o-')
-
+plt.xlabel("$t/T$")
 plt.show()

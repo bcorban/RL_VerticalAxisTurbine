@@ -5,26 +5,26 @@ import random
 import sys
 import torch
 import math
-sys.path.append('/home/adminit/RL_VerticalAxisTurbine/')
+sys.path.append('/home/adminit/RL_VerticalAxisTurbine/Fake_Carrousel/')
 from surrogate_model.MLPmodel import MLP
 m=2
 tau=30
 T=1127
-mean=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/surrogate_model/NNet_files/means.txt") 
-std=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/surrogate_model/NNet_files/stds.txt")
-phase=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/data/phase.npy")
+mean=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/Fake_Carrousel/surrogate_model/NNet_files/means.txt") 
+std=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/Fake_Carrousel/surrogate_model/NNet_files/stds.txt")
+phase=np.loadtxt("/home/adminit/RL_VerticalAxisTurbine/Fake_Carrousel/data/phase.npy")
 
 class CustomEnv(Env):
     def __init__(self,dict_env={}) -> None:
         super(CustomEnv, self).__init__()
         self.dict_env=dict_env
-        self.action_space = self.action_space = Box(low=-0.55, high=0.55, shape=(1,))
+        self.action_space = Box(low=-0.55, high=0.55, shape=(1,))
         self.observation_space = Box(low=np.array([-1.73,-10, -50 , -10, -20,-10, -50 , -10, -20]), high=np.array([1.753,10, 10, 10, 20, 10, 10, 10, 20]))
         # self.state = np.array([phase[1],-1.44179,-1.67565, -0.950994, 1.0443, -1.4451,-2.6568, -1.79957, 3.21946],dtype='float32')
         self.state = np.array([-1.66706679, -0.36840033, -0.46035629, -0.99126627,  0.57170272, -0.26434656, -0.36760229, -1.73953709,  1.47209849],dtype='float32')
         # self.history=np.array([[phase[0], -1.4451,-2.6568, -1.79957, 3.21946], self.state],dtype='float32')
         self.surrogate_model= MLP(10,4,[128,128],mean,std, m,tau)
-        self.surrogate_model.load_state_dict(torch.load("/home/adminit/RL_VerticalAxisTurbine/surrogate_model/NNet_files/trained_net.pt")) #loads trained MLP
+        self.surrogate_model.load_state_dict(torch.load("/home/adminit/RL_VerticalAxisTurbine/Fake_Carrousel/surrogate_model/NNet_files/trained_net.pt")) #loads trained MLP
         self.surrogate_model.eval()
         self.t=0
         self.reward=0
@@ -61,7 +61,7 @@ class CustomEnv(Env):
             self.reward=0
 
         else:
-            self.reward=(6+self.state[2])/13
+            self.reward=(6+self.state[2])/6
 
         # if np.abs(self.state[2])<7 and not math.isnan(self.state[2]) and np.abs(self.state[1])<2.6:
         #     self.reward=(6+self.state[2])/13 #transform Cp so that the reward is always positive
@@ -69,7 +69,7 @@ class CustomEnv(Env):
         #     self.reward=0
         #     print(f"overshoot,t={self.t}, action={action},state={self.state}")
 
-        if self.t==1*int(T/tau):
+        if self.t==2*int(T/tau):
             terminated = True
         else:
             terminated = False
