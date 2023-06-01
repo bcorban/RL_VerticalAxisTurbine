@@ -8,6 +8,7 @@ import math
 import gclib
 import matlab.engine
 import time
+from scipy import signal
 sys.path.append("/Users/PIVUSER/Desktop/tmp_baptiste/Carousel/RL_/envs")
 
 from param_matlab import param,m,NI
@@ -29,7 +30,7 @@ class CustomEnv(Env):
         # self.dict_env=dict_env
         self.action_space = Box(low=-0.55, high=0.55, shape=(1,))
         self.observation_space = Box(low=np.array([-2,-2,-2]), high=np.array([2,2,2]))       
-                
+        
         self.N_ep_without_homing=300
         self.N_transient_effects=3
         self.N_max_ep=10
@@ -38,7 +39,6 @@ class CustomEnv(Env):
 
     def step(self, action):
         self.pitch(action)
-        self.i+=1
         self.state=self.read_state()
         self.history_states[self.t]=self.state
         
@@ -64,9 +64,13 @@ class CustomEnv(Env):
         
     def reset(self,seed=None,options=None):
         self.episode_counter+=1
-        self.history_states=np.zeros(10000,4)
-        self.history_volts=np.zeros(10000,8)
-        self.history_volts_raw=np.zeros(10000,8)
+        self.history_states=np.zeros(100000,4)
+        self.history_volts=np.zeros(100000,8)
+        self.history_volts_raw=np.zeros(100000,8)
+        self.time_history=np.zeros(100000)
+        self.history_forces_noisy=np.zeros(100000,2)
+        self.history_forces_butter=np.zeros(100000,2)
+        self.history_forces=np.zeros(100000,2)
         self.i=0
         
         if self.episode_counter>1: 
@@ -113,8 +117,8 @@ class CustomEnv(Env):
 
 
     def read_state(self):
-        c=g.GCommand
         print('state')
+        self.time_history[self.i]=time.time()-self.t_start
         galil_output=c('MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7],_TPE,_TDF,_TPF')
         galil_output[5]-=self.n_rot_ini*360*m[1]['es']
         volts_raw=galil_output[0:5]
@@ -124,11 +128,19 @@ class CustomEnv(Env):
         self.history_volts_raw[self.i]=volts_raw #check formats !!!
         self.history_volts[self.i]=volts #check formats !!!
         ws=10 #window size for fill outliers
-        if self.i>ws:
-            self.filloutliers(ws)
+        assert(self.i>ws)
+        self.filloutliers(ws)
         pitch_should=galil_output[6]/m[2]['ms']
         pitch_is=galil_output[7]/m[2]['es']
-        forces_noisy=volts[-1]*param['R4']['??']
+        self.history_forces_noisy[self.i]=volts[-1]*param['R4'][:,[0,1]] #get Ft and Fr
+        b, a = signal.butter(8, 0.01) #to be tuned
+        self.history_forces_butter[self.i-ws:self.i+1] = signal.filtfilt(b, a, self.history_forces_noisy[self.i-ws:self.i+1], padlen=0)
+        self.history_forces[self.i]=self.history_forces_butter[self.i]
+        self.history_forces[self.i,0]-=param['F0'] #remove drag offset 
+        Ueff=param['Uinf']*(1+2*param['lambda']*np.cos(phase/360*2*np.pi())+param['lambda']**2)**0.5
+        Fsp=param['Csp']*0.5*param['rho']*Ueff**2*param['spr']**2*np.pi*2
+        
+        self.i+=1
         return np.zeros(3)
 
     def start_E():
@@ -155,17 +167,26 @@ class CustomEnv(Env):
         print("saving data")
         
     def get_offset(self):
-        self.offset=value
+        t_offset_pause = 5
+        tic=time.time()
+        i_start=self.i #should be 0
+        while time.time()-tic<t_offset_pause:
+            self.time_history[self.i]=time.time()-self.t_start
+            self.history_volts_raw[self.i]=c('MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7]')
+            self.i+=1
+        
+        self.offset=np.mean(self.history_volts_raw[i_start:self.i+1])
+        self.history_volts[i_start:self.i+1]=-(self.history_volts_raw[i_start:self.i+1]-self.offset)
         
     def close(self):
         g.GClose()
         
     
     def filloutliers(self,ws):
-        window=self.history_volts[-ws:]
+        window=self.history_volts[self.i-ws:self.i+1]
         med=np.median(window)
         MAD=1.4826*np.median(np.abs(window-med))
-        if np.abs(self.history_volts[-1]-med)>3/MAD:
-            self.history_volts[-1]=med+3/MAD*np.sign(self.history_volts[-1]-med)
+        if np.abs(self.history_volts[self.i]-med)>3/MAD:
+            self.history_volts[self.i]=med+3/MAD*np.sign(self.history_volts[self.i]-med)
         if window==np.ones(ws)*med:
-            self.history_volts[-ws:]=-(self.history_volts_raw[-ws]-self.offset)
+            self.history_volts[self.i-ws:self.i+1]=-(self.history_volts_raw[self.i-ws:self.i+1]-self.offset)
