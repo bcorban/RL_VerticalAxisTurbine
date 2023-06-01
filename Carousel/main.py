@@ -55,27 +55,11 @@ c("AQ6, 1")
 c("AQ7, -1")
 c("AQ8, 1")
 
-#----------------Start the loadcell--------------------
-eng = matlab.engine.start_matlab()
 
-path = "/Users/PIVUSER/Documents/MATLAB"
-
-eng.addpath(path, nargout= 0 )
-
-path = "/Users/PIVUSER/Desktop/tmp_baptiste/Carousel"
-
-eng.addpath(path, nargout= 0 )
-
-eng.start_lc(nargout=0)
-t_start=time.time()
 #--------------------------------
 
 RL_loop(c)
 
-
-#-------Stop loadcel
-eng.stop_lc(nargout=0)
-d=eng.workspace['d']
 
 
 

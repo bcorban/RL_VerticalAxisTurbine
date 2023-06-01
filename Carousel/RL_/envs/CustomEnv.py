@@ -29,9 +29,7 @@ class CustomEnv(Env):
         # self.dict_env=dict_env
         self.action_space = Box(low=-0.55, high=0.55, shape=(1,))
         self.observation_space = Box(low=np.array([-2,-2,-2]), high=np.array([2,2,2]))       
-
-        self.start_E()
-        self.wait_N_rot(3)        
+                
         self.N_ep_without_homing=300
         self.N_transient_effects=3
         self.N_max_ep=10
@@ -71,21 +69,26 @@ class CustomEnv(Env):
         self.history_volts_raw=np.zeros(10000,8)
         self.i=0
         
-        if self.episode_counter!=0:
+        if self.episode_counter>1: 
             eng.stop_lc(nargout=0)
             self.save_data()
-            
-        if self.episode_counter!=0 and self.episode_counter%self.N_ep_without_homing==0:
-            print("homing")
-            self.stop_E()
-            self.home()
+            eng.start_lc(nargout=0) #Start the loadcell
+            self.t_start=time.time()
+            if self.episode_counter%self.N_ep_without_homing==0:
+                print("homing")
+                self.stop_E()
+                self.home()
+                self.get_offset()
+                self.start_E()
+                self.wait_N_rot(3)
+        else: #first episode : start load cell, get offset, start motor
+            eng.start_lc(nargout=0) #Start the loadcell
+            self.t_start=time.time()
             self.get_offset()
             self.start_E()
             self.wait_N_rot(3)
-        
         #-----------------------------------
-        eng.start_lc(nargout=0) #Start the loadcell
-        self.t_start=time.time()
+        
         self.n_rot_ini=c('MG _TPE')/ m[1]['es']//360
         self.state = self.read_state()
         self.reward=0
@@ -115,17 +118,17 @@ class CustomEnv(Env):
         galil_output=c('MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7],_TPE,_TDF,_TPF')
         galil_output[5]-=self.n_rot_ini*360*m[1]['es']
         volts_raw=galil_output[0:5]
-        volts=-(volts_raw)-self.offset
+        volts=-(volts_raw-self.offset)
         phase= galil_output[5] / m[1]['es'] % 360# In degrees
         phase_cont = galil_output[5] / m[1]['es']  #In degrees
         self.history_volts_raw[self.i]=volts_raw #check formats !!!
         self.history_volts[self.i]=volts #check formats !!!
-        
-        
-        
-        
-        
-
+        ws=10 #window size for fill outliers
+        if self.i>ws:
+            self.filloutliers(ws)
+        pitch_should=galil_output[6]/m[2]['ms']
+        pitch_is=galil_output[7]/m[2]['es']
+        forces_noisy=volts[-1]*param['R4']['??']
         return np.zeros(3)
 
     def start_E():
@@ -157,6 +160,12 @@ class CustomEnv(Env):
     def close(self):
         g.GClose()
         
-    def fill_outliers(self):
-        clean_list=[]
-        return clean_list
+    
+    def filloutliers(self,ws):
+        window=self.history_volts[-ws:]
+        med=np.median(window)
+        MAD=1.4826*np.median(np.abs(window-med))
+        if np.abs(self.history_volts[-1]-med)>3/MAD:
+            self.history_volts[-1]=med+3/MAD*np.sign(self.history_volts[-1]-med)
+        if window==np.ones(ws)*med:
+            self.history_volts[-ws:]=-(self.history_volts_raw[-ws]-self.offset)
