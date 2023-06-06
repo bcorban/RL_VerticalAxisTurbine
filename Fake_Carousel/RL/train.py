@@ -31,13 +31,16 @@ class CustomReplayBuffer(ReplayBuffer):
         # Check the condition based on the state information
         if self.should_store_transition(data):
             
-            print(data.__getitem__('default_policy').__getitem__('obs')[0][0])
+            print(data.__getitem__('default_policy').__getitem__('obs'))
+            print(data.__getitem__('default_policy').__getitem__('t'))
+            print(data.__getitem__('default_policy').__getitem__('infos'))
             super().add(data)
 
     def should_store_transition(self, data):
         # Implement your condition here based on the state information
         # For example, if the position is in the state, you can check if it meets your criteria
-        return data.__getitem__('default_policy').__getitem__('obs')[0][0]>360*3
+        # return data.__getitem__('default_policy').__getitem__('obs')[0][0]>360*3
+        return True
 
 CONFIG_PPO = {
     #COMMON config

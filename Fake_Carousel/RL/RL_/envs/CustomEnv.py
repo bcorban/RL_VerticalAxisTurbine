@@ -61,9 +61,11 @@ class CustomEnv(Env):
         if len(flags)>0:
             print(f"overshoot for {flags},t={self.t},state={self.state}")
             self.reward=0
+            
 
         else:
             self.reward=(6+self.state[2])/6
+        info = {'transient':True}
 
         # if np.abs(self.state[2])<7 and not math.isnan(self.state[2]) and np.abs(self.state[1])<2.6:
         #     self.reward=(6+self.state[2])/13 #transform Cp so that the reward is always positive
@@ -77,7 +79,7 @@ class CustomEnv(Env):
             terminated = False
 
         truncated =False
-        info = {}
+        
         
         # Return step information
         return self.state, self.reward, terminated, truncated, info
