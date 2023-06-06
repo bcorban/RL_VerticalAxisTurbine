@@ -41,7 +41,7 @@ class CustomEnv(Env):
         self.episode_counter=0
 
     def step(self, action): #perform one step, ie one pitching command
-        
+        print("step")
         self.pitch(action)
         
         self.read_state()
@@ -54,6 +54,7 @@ class CustomEnv(Env):
         
         #Compute reward
         if nrot <= self.N_transient_effects + self.n_rot_ini:
+            print("transient")
             self.reward=0
             info={'transient':True}
         else:
@@ -62,6 +63,7 @@ class CustomEnv(Env):
             
         #Check if episode terminated 
         if nrot>=self.N_max:
+            print("terminated")
             terminated = True
             self.pitch(0) #pitch back to 0 at the end of an episode
         else:
@@ -82,17 +84,18 @@ class CustomEnv(Env):
         self.history_pitch_should=np.zeros(N)
         self.history_pitch_is=np.zeros(N)
         self.history_states=np.zeros((N,4))
-        self.history_volts=np.zeros((N,8))
-        self.history_volts_raw=np.zeros((N,8))
-        self.history_time=np.zeros,(N)
+        self.history_volts=np.zeros((N,5))
+        self.history_volts_raw=np.zeros((N,5))
+        self.history_time=np.zeros(N)
         self.history_forces_noisy=np.zeros((N,2))
         self.history_forces_butter=np.zeros((N,2))
         self.history_forces=np.zeros((N,2))
         self.history_coeff=np.zeros((N,2))
         self.history_action=np.zeros(N)
         self.i=0
-        
+        print(self.episode_counter)
         if self.episode_counter>1: # if not first episode
+            print("not first ep")
             eng.stop_lc(nargout=0)
             self.save_data()
             
@@ -110,6 +113,7 @@ class CustomEnv(Env):
                 self.t_start=time.time()
         
         else: #first episode : start load cell, get offset, start motor
+            print("first episode")
             eng.start_lc(nargout=0) #Start the loadcell
             self.t_start=time.time()
             self.get_offset()
@@ -122,7 +126,7 @@ class CustomEnv(Env):
         
        
         self.read_state()
-        self.n_rot_ini=self.history_phase_cont[self.i]
+        self.n_rot_ini=self.history_phase_cont[self.i] // 360
         self.reward=0
         
 
@@ -133,7 +137,7 @@ class CustomEnv(Env):
     def render(self):
         print(f"t={self.t} -- state={self.state} -- reward={self.reward}")
     
-    def home():
+    def home(self):
         print('homing...')
         eng.my_quick_home(nargout=0)
         
@@ -147,8 +151,10 @@ class CustomEnv(Env):
     def read_state(self):
         print('state')
         self.history_time[self.i]=time.time()-self.t_start
-        galil_output=c('MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7],_TPE,_TDF,_TPF')
-        galil_output[5]-=self.n_rot_ini*360*m[1]['es']
+
+        galil_output=list(map(float,(c('MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7],_TPE,_TDF,_TPF')).split()))
+        print(f"\n {galil_output} \n")
+        # galil_output[5]-=self.n_rot_ini*360*m[1]['es']
         
         # 
         volts_raw=galil_output[0:5]
@@ -176,7 +182,7 @@ class CustomEnv(Env):
         self.i+=1
         self.state=self.history_coeff[self.i]
 
-    def start_E():
+    def start_E(self):
         print("Starting motor E")
         g.GCommand('SHE')
         g.GCommand(f"JGE={param['JG']}")
@@ -185,7 +191,7 @@ class CustomEnv(Env):
         #initialize position tracking
         g.GCommand("PTF=1")
 
-    def stop_E():
+    def stop_E(self):
         print("Stopping motor E")
         g.GCommand("ST")
 
@@ -194,13 +200,14 @@ class CustomEnv(Env):
         self.read_state()
         phase_ini=self.history_phase_cont[self.i]
         while self.history_phase_cont[self.i]-phase_ini< N*360:
+            print("a")
             self.read_state()
             
     def save_data(self,ms=2):
         print("saving data...")
-        path=f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms00{ms}mpt{'{:04}'.format(self.episode_counter)}.mat"
-        dict={'param':param,'time':self.history_time,'phase':self.history_phase,'phase_cont':self.history_phase_cont,'pitch_is':self.history_pitch_is,'pitch_should':self.history_pitch_should, 'action':self.history_action,'volts_raw':self.history_volts_raw, 'volts': self.history_volts, 'forces_noisy' : self.history_forces_noisy, 'forces_butter': self.history_forces_butter,'forces':self.history_forces,'coeff':self.history_coeff, 'state':self.history_states}
-        savemat(path,dict)
+        # path=f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms00{ms}mpt{'{:04}'.format(self.episode_counter)}.mat"
+        # dict={'param':param,'time':self.history_time,'phase':self.history_phase,'phase_cont':self.history_phase_cont,'pitch_is':self.history_pitch_is,'pitch_should':self.history_pitch_should, 'action':self.history_action,'volts_raw':self.history_volts_raw, 'volts': self.history_volts, 'forces_noisy' : self.history_forces_noisy, 'forces_butter': self.history_forces_butter,'forces':self.history_forces,'coeff':self.history_coeff, 'state':self.history_states}
+        # savemat(path,dict)
 
         
         
@@ -210,10 +217,13 @@ class CustomEnv(Env):
         t_offset_pause = 5
         tic=time.time()
         i_start=self.i #should be 0
+        print(self.i)
+        print(time.time()-tic)
         while time.time()-tic<t_offset_pause:
             self.history_time[self.i]=time.time()-self.t_start
-            self.history_volts_raw[self.i]=c('MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7]')
+            self.history_volts_raw[self.i]=list(map(float,(c('MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7]')).split()))
             self.i+=1
+            print(self.i)
         
         self.offset=np.mean(self.history_volts_raw[i_start:self.i+1])
         self.history_volts[i_start:self.i+1]=-(self.history_volts_raw[i_start:self.i+1]-self.offset)
