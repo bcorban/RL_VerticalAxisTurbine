@@ -10,14 +10,14 @@ import ray
 
 from ray.rllib.algorithms.sac import SAC,SACConfig
 # from custom_callbacks import CustomCallbacks
-from config import CONFIG_SAC
+from config_SAC import CONFIG_SAC,CONFIG_TRAIN
 
 
 def RL_loop():
 
     algo = SAC(config=CONFIG_SAC)
 
-    for epoch in range(CONFIG_SAC["N_epoch"]):
+    for epoch in range(CONFIG_TRAIN["N_epoch"]):
         result=algo.train()
         print(result)
         print('epoch : ',epoch)

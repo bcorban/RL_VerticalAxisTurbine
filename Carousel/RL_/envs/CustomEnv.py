@@ -10,14 +10,14 @@ import matlab.engine
 import time
 from scipy import signal
 from scipy.io import savemat
-from config import CONFIG_ENV
+from config_ENV import CONFIG_ENV
 
-sys.path.append("/Users/PIVUSER/Desktop/tmp_baptiste/Carousel/RL_/envs")
+sys.path.append("/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/RL_/envs")
 
 from param_matlab import param,m,NI
 
 eng = matlab.engine.start_matlab()
-path = "/Users/PIVUSER/Desktop/tmp_baptiste/Carousel/RL_/envs"
+path = "/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel"
 eng.addpath (path, nargout= 0 )
 path = "/Users/PIVUSER/Documents/MATLAB"
 eng.addpath(path, nargout= 0 )
@@ -28,9 +28,9 @@ print(g.GInfo())
 
 class CustomEnv(Env):
     
-    def __init__(self) -> None:
+    def __init__(self,dict_env={}) -> None:
         super(CustomEnv, self).__init__()
- 
+        self.dict_env=dict_env
         self.action_space = Box(low=CONFIG_ENV['action_lb'], high=CONFIG_ENV['action_hb'], shape=(1,))
         self.observation_space = Box(low=np.array([-10,-10]), high=np.array([10,10]))       
 
@@ -74,21 +74,21 @@ class CustomEnv(Env):
         return self.state, self.reward, terminated, truncated, info
     
 
-    def reset(self,seed=None,options=None):
+    def reset(self,*,seed=None,options=None):
         self.episode_counter+=1
         N=100000
         self.history_phase=np.zeros(N)
         self.history_phase_cont=np.zeros(N)
         self.history_pitch_should=np.zeros(N)
         self.history_pitch_is=np.zeros(N)
-        self.history_states=np.zeros(N,4)
-        self.history_volts=np.zeros(N,8)
-        self.history_volts_raw=np.zeros(N,8)
+        self.history_states=np.zeros((N,4))
+        self.history_volts=np.zeros((N,8))
+        self.history_volts_raw=np.zeros((N,8))
         self.history_time=np.zeros,(N)
-        self.history_forces_noisy=np.zeros(N,2)
-        self.history_forces_butter=np.zeros(N,2)
-        self.history_forces=np.zeros(N,2)
-        self.history_coeff=np.zeros(N,2)
+        self.history_forces_noisy=np.zeros((N,2))
+        self.history_forces_butter=np.zeros((N,2))
+        self.history_forces=np.zeros((N,2))
+        self.history_coeff=np.zeros((N,2))
         self.history_action=np.zeros(N)
         self.i=0
         

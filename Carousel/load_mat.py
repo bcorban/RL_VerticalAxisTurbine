@@ -4,7 +4,7 @@ import scipy.io as spio
 import numpy as np
 import matlab.engine
 eng = matlab.engine.start_matlab()
-path = "/Users/PIVUSER/Desktop/tmp_baptiste/Carousel"
+path = "/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel"
 eng.addpath (path, nargout= 0 )
 def load_mat(filename, var=None):
     '''
