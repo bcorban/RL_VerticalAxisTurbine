@@ -18,7 +18,7 @@ from config_SAC import CONFIG_SAC, CONFIG_TRAIN
 def RL_loop():
     algo = SAC(config=CONFIG_SAC)
 
-    for epoch in range(CONFIG_TRAIN["N_epoch"]):
+    for epoch in range(CONFIG_TRAIN["N_epoch"]): #training loop
         result = algo.train()
         print(result)
         print("epoch : ", epoch)

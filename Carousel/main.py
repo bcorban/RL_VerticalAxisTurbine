@@ -11,7 +11,7 @@ g.GOpen("192.168.255.200 --direct -s ALL")
 print(g.GInfo())
 setup_g(g)
 
-# --------------------------------
+# --------Start RL training loop-------------------
 
 RL_loop()
 

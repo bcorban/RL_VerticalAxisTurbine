@@ -10,6 +10,5 @@ class CustomReplayBuffer(
             super().add(data)
 
     def should_store_transition(self, data):
-        # Implement your condition here based on the state information
-        # For example, if the position is in the state, you can check if it meets your criteria
+        # Implement condition based on the info dict of a step transition
         return data.__getitem__("default_policy").__getitem__("infos")[0]["transient"]

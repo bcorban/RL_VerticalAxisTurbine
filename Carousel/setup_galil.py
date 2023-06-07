@@ -1,4 +1,4 @@
-def setup_g(g):
+def setup_g(g): #sets up somme motor and galil parameters
     c = g.GCommand
     # Increase the acceleration and deceleration of the motor
     ACF = 1.5

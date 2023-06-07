@@ -275,6 +275,11 @@ class CustomEnv(Env):
         )
 
     def close(self): #close galil connection when closing environment
+        print("Closing environment")
+        
+        eng.stop_lc(nargout=0) #stop loadcell
+        self.save_data()
+        self.stop_E()
         g.GClose()
 
     def filloutliers(self, ws): #replace outlier values if they exceed three times the MAD value around the median, in a window of ws timesteps
