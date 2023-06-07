@@ -1,17 +1,17 @@
 def setup_g(g):
-    c=g.GCommand
-    #Increase the acceleration and deceleration of the motor
+    c = g.GCommand
+    # Increase the acceleration and deceleration of the motor
     ACF = 1.5
     SPF = 1000000
-    KSF = 0.5 #Between 0.25 (low smoothing) and 64 (high smoothing)
+    KSF = 0.5  # Between 0.25 (low smoothing) and 64 (high smoothing)
 
-    c(f"ACF={round(256000 * ACF)}") 
-    c(f"DCF={round(256000 * ACF)}") 
-    c(f"SPF={SPF}") #Default value: 10666
-    c(f"KSF={KSF}") #Default value: 10666
-    c("DEF=0") #Force F encoder to 0 (because it's homed) to put after homing
+    c(f"ACF={round(256000 * ACF)}")
+    c(f"DCF={round(256000 * ACF)}")
+    c(f"SPF={SPF}")  # Default value: 10666
+    c(f"KSF={KSF}")  # Default value: 10666
+    c("DEF=0")  # Force F encoder to 0 (because it's homed) to put after homing
 
-    #code from set_galil_analog_inputs.m
+    # code from set_galil_analog_inputs.m
 
     """ 
     * Set the analog input parameters properly
@@ -23,12 +23,12 @@ def setup_g(g):
     - Differential inputs: channels 3, 4 and 5.
     Also, the input range is reduced to +- 5V to increase the accuracy."""
 
-    #Channel 1 and 2, read directly
-    #Channel 1
+    # Channel 1 and 2, read directly
+    # Channel 1
     c("AQ1, 1")
-    #Channel 2
+    # Channel 2
     c("AQ2, 1")
-    #Channels 3, 4, 5: differential inputs
+    # Channels 3, 4, 5: differential inputs
     # Channel 3
 
     c("AQ3, -1")
