@@ -101,7 +101,7 @@ class CustomEnv(Env):
         self.i = 0 #iteration/timestep counter
         
         print(self.episode_counter)
-        if self.episode_counter > 1:  # if not first episode
+        if self.episode_counter > 2:  # if not first episode
             print("not first ep")
             eng.stop_lc(nargout=0) #stop loadcell
             self.save_data() #save data from previous ep
@@ -119,7 +119,7 @@ class CustomEnv(Env):
                 eng.start_lc(nargout=0)  # Start the loadcell
                 self.t_start = time.time()
 
-        else:  # first episode : start load cell, get offset, start motor
+        elif self.episode_counter ==1 :  # first episode : start load cell, get offset, start motor
             print("first episode")
             eng.start_lc(nargout=0)  # Start the loadcell
             self.t_start = time.time()
@@ -129,7 +129,7 @@ class CustomEnv(Env):
 
         info = {}
         # -----------------------------------
-        self.n_rot_ini=float(c("MG _TPE"))/ m[1]["es"] // 360 #get initial number of rotation since galil start
+        self.n_rot_ini=float(c("MG _TPE"))/m[0]["es"] // 360 #get initial number of rotation since galil start
         self.read_state()
 
         self.reward = 0
@@ -146,7 +146,7 @@ class CustomEnv(Env):
 
     def pitch(action_abs): #perform an absolute pitching order
         print("pitching")
-        g.GCommand(f"PAF={action_abs}")
+        # g.GCommand(f"PAF={action_abs}")
 
     def read_state(self): #reads current state of the blade : from voltages to forces and position 
         print("state")
@@ -155,7 +155,7 @@ class CustomEnv(Env):
         #read galil output (volts)
         galil_output = list(map(float,(c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7],_TPE,_TDF,_TPF")).split()))
         print(f"\n {galil_output} \n")
-        galil_output[5]-=self.n_rot_ini*360*m[1]['es'] #substract the starting phase of the episode
+        galil_output[5]-=self.n_rot_ini*360*m[0]['es'] #substract the starting phase of the episode
 
         # get voltages for the loads, and substract measured offset
         volts_raw = galil_output[0:5] 
@@ -164,10 +164,10 @@ class CustomEnv(Env):
         self.history_volts[self.i] = volts 
 
         #get the phase and pitch of the blade
-        self.history_phase[self.i] = galil_output[5] / m[1]["es"] % 360  # In degrees
-        self.history_phase_cont[self.i] = galil_output[5] / m[1]["es"]  # In degrees
-        self.history_pitch_should[self.i] = galil_output[6] / m[2]["ms"] # In degrees
-        self.history_pitch_is[self.i] = galil_output[7] / m[2]["es"]  # In degrees
+        self.history_phase[self.i] = galil_output[5] /m[0]["es"] % 360  # In degrees
+        self.history_phase_cont[self.i] = galil_output[5] /m[0]["es"]  # In degrees
+        self.history_pitch_should[self.i] = galil_output[6] /m[1]["ms"] # In degrees
+        self.history_pitch_is[self.i] = galil_output[7] /m[1]["es"]  # In degrees
          
         ws = 10  # window size for fill outliers and filtering
         assert self.i > ws
@@ -230,16 +230,16 @@ class CustomEnv(Env):
 
     def start_E(self): #Start motor E
         print("Starting motor E")
-        g.GCommand("SHE")
-        g.GCommand(f"JGE={param['JG']}")
-        g.GCommand("BGE")
+        # g.GCommand("SHE")
+        # g.GCommand(f"JGE={int(param['JG'])}")
+        # g.GCommand("BGE")
 
-        # initialize position tracking
-        g.GCommand("PTF=1")
+        # # initialize position tracking
+        # g.GCommand("PTF=1")
 
     def stop_E(self): #Stop motor E
         print("Stopping motor E")
-        g.GCommand("ST")
+        # g.GCommand("ST")
 
     def wait_N_rot(self, N): #Wait N rotations from motor E
         print(f"waiting for {N} periods")
@@ -267,7 +267,7 @@ class CustomEnv(Env):
                 map(float, (c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7]")).split())
             )
             self.i += 1
-            print(self.i)
+            # print(self.i)
 
         self.offset = np.mean(self.history_volts_raw[i_start : self.i + 1])
         self.history_volts[i_start : self.i + 1] = -(
