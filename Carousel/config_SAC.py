@@ -1,11 +1,11 @@
 from RL_.envs.CustomEnv import CustomEnv
 from custom_callbacks import CustomCallbacks
 from replay_buffer import CustomReplayBuffer
-
+from gymnasium import Env
 CONFIG_SAC={
 
         "log_level": "INFO",
-        "env": CustomEnv,
+        "env": 'RL_/CustomEnv-v0',
         "num_gpus": 0,
         "num_workers": 0, 
         "explore": True,

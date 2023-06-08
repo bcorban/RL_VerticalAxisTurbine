@@ -3,9 +3,23 @@
 import scipy.io as spio
 import numpy as np
 import matlab.engine
+import getpass
+
 eng = matlab.engine.start_matlab()
-path = "/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel"
-eng.addpath (path, nargout= 0 )
+
+user=getpass.getuser()
+
+if user=='PIVUSER':
+    path = "/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel"
+    eng.addpath (path, nargout= 0 )
+    
+elif user == 'adminit':
+    path = "/home/adminit/RL_VerticalAxisTurbine/Carousel"
+    eng.addpath (path, nargout= 0 )
+    path = "/home/adminit/MATLAB_scripts"
+    eng.addpath (path, nargout= 0 )
+
+
 def load_mat(filename, var=None):
     '''
     this function should be called instead of direct spio.loadmat

@@ -1,8 +1,9 @@
 import numpy as np
-from gymnasium import Env
-from gymnasium.spaces import Box, Discrete
+from gym import Env
+from gym.spaces import Box, Discrete
 import random
 import sys
+import ray
 import torch
 import math
 sys.path.append('/home/adminit/RL_VerticalAxisTurbine/Fake_Carousel/')
@@ -82,7 +83,7 @@ class CustomEnv(Env):
         
         
         # Return step information
-        return self.state, self.reward, terminated, truncated, info
+        return self.state, self.reward, terminated, info
     
 
         
@@ -92,8 +93,9 @@ class CustomEnv(Env):
         self.t=0
         self.reward=0
         info={}
-        return self.state, info
+        return self.state
 
 
     def render (self):
         print(f"t={self.t} -- state={self.state} -- reward={self.reward}")
+ray.rllib.utils.check_env([CustomEnv()])

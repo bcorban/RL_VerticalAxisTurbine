@@ -17,7 +17,7 @@ m(2).free = false; % can this motor spin freely or does it have angular constrai
 m(2).PVT = true; % does this motor need PVT commands to move?
 
 % Add to the parameters
-% param.m = m;
+param.m = m;
 
 %% Obtain experimental parameter - structure
 % Input known parameters and compute rest with carousell_param
@@ -43,22 +43,22 @@ param.rotT = 1 / param.rotf; % Rotation period in second
 % ------------------
 
 % Define initial and total number of rotations
-param.n_rot_act = 30; % Number of actuated rotations
+% param.n_rot_act = 30; % Number of actuated rotations
 
 % Recover the corresponding times
-param.T_act = param.n_rot_act / param.rotf;
+% param.T_act = param.n_rot_act / param.rotf;
 
 % Recover corresponding number of encoder steps
-param.n_steps_act = param.n_rot_act * 360 * m(1).ms;
+% param.n_steps_act = param.n_rot_act * 360 * m(1).ms;
 
-disp("    + Number of rotation (with actuation): "+ param.n_rot_act)
+% disp("    + Number of rotation (with actuation): "+ param.n_rot_act)
 
 %% NI PARAMETERS
 NI.rate= 1000; % [Hz] Scan rate for NI card
 NI.channels = [0 1 2 3 4]; % Analog input channels to use
 NI.device = 'cDAQ1Mod1Mod1'; %
 % NI.calmat = 'carou_calimat4.mat'; % For Carouuuuuuuusel
-% param.NI = NI;
+param.NI = NI;
 
 %% Additional pre-processicng parameters, s.a. forces
 % ------------------------------------
@@ -83,5 +83,6 @@ save('param.mat','param')
 % Notevariable: I keep only the positive matrix as I'm not interested in Mx and My.
 % Also, columns 3 and 4 can be removed from the matrix (also because I
 % don't need to compute Mx and My)
+
 % load(NI.calmat,'R4');
 % param.R4 = R4(:,[1,2,5]);

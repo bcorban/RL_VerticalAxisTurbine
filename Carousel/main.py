@@ -1,19 +1,27 @@
 from param_matlab import param, m, NI
 import gclib
-from train import RL_loop
+from train import RL_loop_sb3,RL_loop_rllib
 from setup_galil import setup_g
+import getpass
 
 g = gclib.py()
 
 # -----------------Connect to galil and set parameters ----------------------
 
-g.GOpen("192.168.255.200 --direct -s ALL")
-print(g.GInfo())
+
+user=getpass.getuser()
+if user=='PIVUSER':
+  g.GOpen("192.168.255.200 --direct -s ALL")
+
+elif user == 'adminit':
+  g.GOpen("192.168.255.25 --direct -s ALL")
+  
+
 setup_g(g)
 
 # --------Start RL training loop-------------------
 
-RL_loop()
+RL_loop_sb3()
 
 # --------------------------------
 

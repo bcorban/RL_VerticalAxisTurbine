@@ -1,6 +1,8 @@
 import numpy as np
-from gymnasium import Env
-from gymnasium.spaces import Box, Discrete
+# import gymnasium as gym
+# from gymnasium.spaces import Box, Discrete
+import gym
+from gym.spaces import Box
 import random
 import sys
 import torch
@@ -11,26 +13,46 @@ import time
 from scipy import signal
 from scipy.io import savemat
 from config_ENV import CONFIG_ENV
-
-sys.path.append("/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/RL_/envs")
-
 from param_matlab import param, m, NI
-
-eng = matlab.engine.start_matlab()
-path = "/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel"
-eng.addpath(path, nargout=0)
-path = "/Users/PIVUSER/Documents/MATLAB"
-eng.addpath(path, nargout=0)
-g = gclib.py()
-c = g.GCommand
-g.GOpen("192.168.255.200 --direct -s ALL")
-print(g.GInfo())
+import getpass
+import ray
 
 
-class CustomEnv(Env):
-    def __init__(self, dict_env={}) -> None: #This method is called when creating the environment
+user=getpass.getuser()
+if user=='PIVUSER':
+    sys.path.append("/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/RL_/envs")
+
+
+    eng = matlab.engine.staCustomEnvrt_matlab()
+    path = "/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel"
+    eng.addpath(path, nargout=0)
+    path = "/Users/PIVUSER/Documents/MATLAB"
+    eng.addpath(path, nargout=0)
+    g = gclib.py()
+    c = g.GCommand
+    g.GOpen("192.168.255.200 --direct -s ALL")
+    print(g.GInfo())
+
+elif user == 'adminit':
+    sys.path.append("/home/adminit/RL_VerticalAxisTurbine/Carousel/RL_/envs")
+
+
+    eng = matlab.engine.start_matlab()
+    path = "/home/adminit/RL_VerticalAxisTurbine/Carousel"
+    eng.addpath(path, nargout=0)
+    path = "/home/adminit/RL_VerticalAxisTurbine"
+    eng.addpath(path, nargout=0)
+    
+    g = gclib.py()
+    c = g.GCommand
+    g.GOpen("192.168.255.25 --direct -s ALL")
+    print(g.GInfo())
+
+
+class CustomEnv(gym.Env):
+    def __init__(self) -> None: #This method is called when creating the environment
         super(CustomEnv, self).__init__()
-        self.dict_env = dict_env
+        # self.dict_env = dict_env
         self.action_space = Box(
             low=CONFIG_ENV["action_lb"], high=CONFIG_ENV["action_hb"], shape=(1,)
         )
@@ -41,6 +63,7 @@ class CustomEnv(Env):
         self.N_max = CONFIG_ENV["N_max"] #max number of steps in an episode
 
         self.episode_counter = 0
+        print("init")
 
     def step(self, action):  #This method performs one step, i.e. one pitching command, and returns the next state and reward
         print("step")
@@ -49,8 +72,7 @@ class CustomEnv(Env):
 
         self.read_state() #update state
 
-        self.history_states[self.i] = self.state 
-        self.history_action[self.i] = action
+        
 
         nrot = (
             self.history_phase_cont[self.i] // 360
@@ -64,6 +86,10 @@ class CustomEnv(Env):
         else:
             self.reward = (self.state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
             info = {"transient": False}
+            self.history_states[self.i] = self.state 
+            self.history_action[self.i] = action
+            self.history_reward[self.i] = self.reward
+            
         #--------------------------------------------------------------
         
         # Check if episode terminated ---------------------------------
@@ -77,7 +103,7 @@ class CustomEnv(Env):
         truncated = False
 
         # Return step information
-        return self.state, self.reward, terminated, truncated, info
+        return self.state, self.reward, terminated,  info
 
     def reset(self, *, seed=None, options=None): #This method is called at the begining of each episode
         self.episode_counter += 1
@@ -97,46 +123,54 @@ class CustomEnv(Env):
         self.history_forces = np.zeros((N, 2))
         self.history_coeff = np.zeros((N, 2))
         self.history_action = np.zeros(N)
-        
+        self.history_reward = np.zeros(N)
         self.i = 0 #iteration/timestep counter
         
         print(self.episode_counter)
-        if self.episode_counter > 2:  # if not first episode
+        if self.episode_counter > 1:  # if not first episode
             print("not first ep")
-            eng.stop_lc(nargout=0) #stop loadcell
+            if user =='PIVUSER':
+                eng.stop_lc(nargout=0) #stop loadcell
             self.save_data() #save data from previous ep
 
             if self.episode_counter % self.N_ep_without_homing == 0:  # if homing needed
                 print("homing")
                 self.stop_E()
                 self.home()
-                eng.start_lc(nargout=0)  # Start the loadcell
+                if user =='PIVUSER':
+                    eng.start_lc(nargout=0)  # Start the loadcell
                 self.t_start = time.time()
+                
                 self.get_offset() #get new offset while E stopped
                 self.start_E()
+                self.n_rot_ini=float(c("MG _TPE"))/m[0]["es"] // 360 #get initial number of rotation since galil start
                 self.wait_N_rot(3) #wait a few rotations 
-            else:
-                eng.start_lc(nargout=0)  # Start the loadcell
-                self.t_start = time.time()
 
-        elif self.episode_counter ==1 :  # first episode : start load cell, get offset, start motor
+            else:
+                if user =='PIVUSER':
+                    eng.start_lc(nargout=0)  # Start the loadcell
+                self.t_start = time.time()
+                self.n_rot_ini=float(c("MG _TPE"))/m[0]["es"] // 360 #get initial number of rotation since galil start
+                
+        else: # first episode : start load cell, get offset, start motor
             print("first episode")
-            eng.start_lc(nargout=0)  # Start the loadcell
+            if user =='PIVUSER':
+                eng.start_lc(nargout=0)  # Start the loadcell
             self.t_start = time.time()
             self.get_offset()
             self.start_E()
+            self.n_rot_ini=float(c("MG _TPE"))/m[0]["es"] // 360 #get initial number of rotation since galil start
             self.wait_N_rot(3)
-
+            
         info = {}
         # -----------------------------------
-        self.n_rot_ini=float(c("MG _TPE"))/m[0]["es"] // 360 #get initial number of rotation since galil start
+        
         self.read_state()
 
         self.reward = 0
 
         # Wait
-        return self.state, info
-
+        return self.state
     def render(self):
         print(f"t={self.t} -- state={self.state} -- reward={self.reward}")
 
@@ -144,17 +178,13 @@ class CustomEnv(Env):
         print("homing...")
         eng.my_quick_home(nargout=0)
 
-    def pitch(action_abs): #perform an absolute pitching order
-        print("pitching")
-        # g.GCommand(f"PAF={action_abs}")
-
     def read_state(self): #reads current state of the blade : from voltages to forces and position 
         print("state")
         self.history_time[self.i] = time.time() - self.t_start #get time
 
         #read galil output (volts)
         galil_output = list(map(float,(c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7],_TPE,_TDF,_TPF")).split()))
-        print(f"\n {galil_output} \n")
+        # print(f"\n {galil_output} \n")
         galil_output[5]-=self.n_rot_ini*360*m[0]['es'] #substract the starting phase of the episode
 
         # get voltages for the loads, and substract measured offset
@@ -173,11 +203,15 @@ class CustomEnv(Env):
         assert self.i > ws
         self.filloutliers(ws)
         
-        
-        self.history_forces_noisy[self.i] = (
-            volts[-1] * param["R4"][:, [0, 1]]
-        )  # get Fx and Fy from volts using calibration matrix
-        
+        if user=='PIVUSER':
+            self.history_forces_noisy[self.i] = (
+                volts[-1] * param["R4"][:, [0, 1]]
+            )  # get Fx and Fy from volts using calibration matrix
+        elif user=='adminit':
+            self.history_forces_noisy[self.i] = (
+                volts[-1]
+            )  # DUMMY LINE TO DELETE
+            
         #filtering step
         b, a = signal.butter(8, 0.01)  # to be tuned
         self.history_forces_butter[self.i - ws : self.i + 1] = signal.filtfilt(
@@ -192,7 +226,7 @@ class CustomEnv(Env):
                 1
                 + 2
                 * param["lambda"]
-                * np.cos(self.history_phase[self.i] / 360 * 2 * np.pi())
+                * np.cos(np.deg2rad(self.history_phase[self.i]))
                 + param["lambda"] ** 2
             )
             ** 0.5
@@ -240,13 +274,20 @@ class CustomEnv(Env):
     def stop_E(self): #Stop motor E
         print("Stopping motor E")
         # g.GCommand("ST")
-
+        
+    def pitch(self,action_abs): #perform an absolute pitching order
+        print("pitching")
+        # g.GCommand(f"PAF={action_abs}")
+        
     def wait_N_rot(self, N): #Wait N rotations from motor E
         print(f"waiting for {N} periods")
+        # self.read_state()
+        # phase_ini = self.history_phase_cont[self.i]
+        # while self.history_phase_cont[self.i] - phase_ini < N * 360:
+        #     self.read_state()
         self.read_state()
-        phase_ini = self.history_phase_cont[self.i]
-        while self.history_phase_cont[self.i] - phase_ini < N * 360:
-            print("a")
+        i_ini= self.i
+        while self.i-i_ini<15: #DUMMY LINE TO DELETE
             self.read_state()
 
     def save_data(self, ms=2): #export data from an episode into a .mat file
@@ -259,8 +300,6 @@ class CustomEnv(Env):
         t_offset_pause = 5
         tic = time.time()
         i_start = self.i  # should be 0
-        print(self.i)
-        print(time.time() - tic)
         while time.time() - tic < t_offset_pause:
             self.history_time[self.i] = time.time() - self.t_start
             self.history_volts_raw[self.i] = list(
@@ -274,23 +313,34 @@ class CustomEnv(Env):
             self.history_volts_raw[i_start : self.i + 1] - self.offset
         )
 
-    def close(self): #close galil connection when closing environment
-        print("Closing environment")
-        
-        eng.stop_lc(nargout=0) #stop loadcell
-        self.save_data()
-        self.stop_E()
-        g.GClose()
 
     def filloutliers(self, ws): #replace outlier values if they exceed three times the MAD value around the median, in a window of ws timesteps
         window = self.history_volts[self.i - ws : self.i + 1]
         med = np.median(window)
         MAD = 1.4826 * np.median(np.abs(window - med))
-        if np.abs(self.history_volts[self.i] - med) > 3 / MAD:
-            self.history_volts[self.i] = med + 3 / MAD * np.sign(
+
+        mask= np.abs(self.history_volts[self.i] - med) > MAD
+
+        replace=np.where(mask, med + 3 / MAD * np.sign(
                 self.history_volts[self.i] - med
+            ),self.history_volts[self.i])
+        self.history_volts[self.i]=replace
+        # if np.abs(self.history_volts[self.i] - med) > 3 / MAD:
+        #     self.history_volts[self.i] = med + 3 / MAD * np.sign(
+        #         self.history_volts[self.i] - med
+        #     )
+        if window == np.ones((ws,5)) * med:
+            print('flatlined')
+            self.history_volts[self.i - ws : self.i + 1,:] = -(
+                self.history_volts_raw[self.i - ws : self.i + 1,:] - self.offset
             )
-        if window == np.ones(ws) * med:
-            self.history_volts[self.i - ws : self.i + 1] = -(
-                self.history_volts_raw[self.i - ws : self.i + 1] - self.offset
-            )
+            
+    def close(self): #close galil connection when closing environment
+        print("Closing environment")
+        if user =='PIVUSER':
+            eng.stop_lc(nargout=0) #stop loadcell
+        self.save_data()
+        self.stop_E()
+        g.GClose()
+    
+

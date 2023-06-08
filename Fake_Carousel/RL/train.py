@@ -26,21 +26,21 @@ plt.rcParams.update(params)
 
 
 
-class CustomReplayBuffer(ReplayBuffer):
-    def add(self, data):
-        # Check the condition based on the state information
-        if self.should_store_transition(data):
+# class CustomReplayBuffer(ReplayBuffer):
+#     def add(self, data):
+#         # Check the condition based on the state information
+#         if self.should_store_transition(data):
             
-            print(data.__getitem__('default_policy').__getitem__('obs'))
-            print(data.__getitem__('default_policy').__getitem__('t'))
-            print(data.__getitem__('default_policy').__getitem__('infos'))
-            super().add(data)
+#             print(data.__getitem__('default_policy').__getitem__('obs'))
+#             print(data.__getitem__('default_policy').__getitem__('t'))
+#             print(data.__getitem__('default_policy').__getitem__('infos')[0]['transient'])
+#             super().add(data)
 
-    def should_store_transition(self, data):
-        # Implement your condition here based on the state information
-        # For example, if the position is in the state, you can check if it meets your criteria
-        # return data.__getitem__('default_policy').__getitem__('obs')[0][0]>360*3
-        return True
+#     def should_store_transition(self, data):
+#         # Implement your condition here based on the state information
+#         # For example, if the position is in the state, you can check if it meets your criteria
+#         # return data.__getitem__('default_policy').__getitem__('obs')[0][0]>360*3
+#         return True
 
 CONFIG_PPO = {
     #COMMON config
@@ -92,7 +92,8 @@ CONFIG_SAC={
 		"exploration_config": {
 			"type": "StochasticSampling",
 		},
-  "replay_buffer_config": {"type" :CustomReplayBuffer,},
+#   "replay_buffer_config": {"type" :CustomReplayBuffer,},
+#   "replay_buffer_config": {"type" :CustomReplayBuffer,},
     "framework": "torch",
     "callbacks":CustomCallbacks,
      "prioritized_replay": True,
