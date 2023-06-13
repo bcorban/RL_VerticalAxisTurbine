@@ -16,6 +16,7 @@ from config_SAC import CONFIG_SAC, CONFIG_TRAIN
 import gym
 import ray
 from stable_baselines3 import SAC
+from replay_buffer import SB3_CustomReplayBuffer
 
 # ray.rllib.utils.check_env([gym.make('CustomEnv')])
 def RL_loop_rllib():
@@ -35,6 +36,8 @@ def RL_loop_rllib():
     ray.shutdown()
 
 def RL_loop_sb3():
+    Nrot_ep=1
+    Nts_ep=83
     env=gym.make('RL_/CustomEnv-v0')
-    model = SAC("MlpPolicy", env, verbose=1)
-    model.learn(total_timesteps=10000, progress_bar=True)
+    model = SAC("MlpPolicy", env, verbose=1,replay_buffer_class=SB3_CustomReplayBuffer,learning_rate=3e-4,buffer_size=500000,batch_size=512,ent_coef=0.1,train_freq=Nrot_ep*Nts_ep)
+    model.learn(total_timesteps=10000, progress_bar=True,train_freq=10)

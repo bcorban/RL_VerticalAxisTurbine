@@ -23,10 +23,11 @@ class SB3_CustomReplayBuffer(stable_baselines3.common.buffers.ReplayBuffer):
         infos,
     ) -> None:
         # Check the condition based on the state information
+
         if self.should_store_transition(infos):
-            super().add(self,obs,next_obs,action,reward,done,infos)
+            super().add(obs,next_obs,action,reward,done,infos)
 
     def should_store_transition(self, infos):
-        print(infos)
+        # print(infos)
         # Implement condition based on the info dict of a step transition
-        return infos !='transient'
+        return not infos[0]['transient']

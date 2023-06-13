@@ -5,6 +5,7 @@ import gym
 from gym.spaces import Box
 import random
 import sys
+from typing import Optional
 import torch
 import math
 import gclib
@@ -17,13 +18,14 @@ from param_matlab import param, m, NI
 import getpass
 import ray
 
+print(gym.__version__)
 
 user=getpass.getuser()
 if user=='PIVUSER':
     sys.path.append("/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/RL_/envs")
 
 
-    eng = matlab.engine.staCustomEnvrt_matlab()
+    eng = matlab.engine.start_matlab()
     path = "/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel"
     eng.addpath(path, nargout=0)
     path = "/Users/PIVUSER/Documents/MATLAB"
@@ -56,6 +58,7 @@ class CustomEnv(gym.Env):
         self.action_space = Box(
             low=CONFIG_ENV["action_lb"], high=CONFIG_ENV["action_hb"], shape=(1,)
         )
+
         self.observation_space = Box(low=np.array([-10, -10]), high=np.array([10, 10]))
 
         self.N_ep_without_homing = CONFIG_ENV["N_ep_without_homing"] #number of episodes between each homing procedures
@@ -79,33 +82,62 @@ class CustomEnv(gym.Env):
         )  #current number of rotation since begining of the episode
 
         # Compute reward ---------------------------------------------
-        if nrot <= self.N_transient_effects + self.n_rot_ini: #if during transients effects, do not save samples
-            print("transient")
-            self.reward = 0
-            info = {"transient": True}
-        else:
-            self.reward = (self.state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
-            info = {"transient": False}
-            self.history_states[self.i] = self.state 
-            self.history_action[self.i] = action
-            self.history_reward[self.i] = self.reward
+        if user=='PIVUSER':
+                        
+            if nrot <= self.N_transient_effects + self.n_rot_ini: #if during transients effects, do not save samples
+                print("transient")
+                self.reward = 0
+                info = {"transient": True}
+            else:
+                self.reward = (self.state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
+                info = {"transient": False}
+                self.history_states[self.i] = self.state 
+                self.history_action[self.i] = action
+                self.history_reward[self.i] = self.reward
+            
+
+        elif user == 'adminit':
+
+            if self.i-self.i_begining<10: #if during transients effects, do not save samples
+                print("transient")
+                self.reward = 0
+                info = {"transient": True}
+            else:
+                self.reward = (self.state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
+                info = {"transient": False}
+                self.history_states[self.i] = self.state 
+                self.history_action[self.i] = action
+                self.history_reward[self.i] = self.reward
+                
             
         #--------------------------------------------------------------
         
         # Check if episode terminated ---------------------------------
-        if nrot >= self.N_max: 
-            print("terminated")
-            terminated = True
-            self.pitch(0)  # pitch back to 0 at the end of an episode
-        else:
-            terminated = False
-
+        if user=='PIVUSER':
+        
+            if nrot >= self.N_max: 
+                print("terminated")
+                terminated = True
+                self.pitch(0)  # pitch back to 0 at the end of an episode
+            else:
+                terminated = False
+        elif user == 'adminit':
+            if self.i-self.i_begining>20: 
+                print("terminated")
+                terminated = True
+                self.pitch(0)  # pitch back to 0 at the end of an episode
+            else:
+                terminated = False
         truncated = False
 
         # Return step information
-        return self.state, self.reward, terminated,  info
+        return self.state, self.reward, terminated, info
 
-    def reset(self, *, seed=None, options=None): #This method is called at the begining of each episode
+    def reset(self,
+        *,
+        seed: Optional[int] = None,
+        return_info: bool = False,
+        options: Optional[dict] = None): #This method is called at the begining of each episode
         self.episode_counter += 1
         
         N = 100000
@@ -114,7 +146,7 @@ class CustomEnv(gym.Env):
         self.history_phase_cont = np.zeros(N)
         self.history_pitch_should = np.zeros(N)
         self.history_pitch_is = np.zeros(N)
-        self.history_states = np.zeros((N, 4))
+        self.history_states = np.zeros((N, 2))
         self.history_volts = np.zeros((N, 5))
         self.history_volts_raw = np.zeros((N, 5))
         self.history_time = np.zeros(N)
@@ -168,9 +200,15 @@ class CustomEnv(gym.Env):
         self.read_state()
 
         self.reward = 0
+        if user=='adminit':
+            self.i_begining=self.i
+        if not return_info:
+            return self.state
+        else:
+            return self.state,info
 
-        # Wait
-        return self.state
+        
+    
     def render(self):
         print(f"t={self.t} -- state={self.state} -- reward={self.reward}")
 
@@ -200,23 +238,38 @@ class CustomEnv(gym.Env):
         self.history_pitch_is[self.i] = galil_output[7] /m[1]["es"]  # In degrees
          
         ws = 10  # window size for fill outliers and filtering
-        assert self.i > ws
-        self.filloutliers(ws)
-        
-        if user=='PIVUSER':
-            self.history_forces_noisy[self.i] = (
-                volts[-1] * param["R4"][:, [0, 1]]
-            )  # get Fx and Fy from volts using calibration matrix
-        elif user=='adminit':
-            self.history_forces_noisy[self.i] = (
-                volts[-1]
-            )  # DUMMY LINE TO DELETE
+        if self.i > ws:
+            self.filloutliers(ws)
             
-        #filtering step
-        b, a = signal.butter(8, 0.01)  # to be tuned
-        self.history_forces_butter[self.i - ws : self.i + 1] = signal.filtfilt(
-            b, a, self.history_forces_noisy[self.i - ws : self.i + 1], padlen=0
-        )
+            if user=='PIVUSER':
+                self.history_forces_noisy[self.i] = (
+                    volts[-1] * param["R4"][:, [0, 1]]
+                )  # get Fx and Fy from volts using calibration matrix
+            elif user=='adminit':
+                self.history_forces_noisy[self.i] = (
+                    volts[-1]
+                )  # DUMMY LINE TO DELETE
+                
+            #filtering step
+            b, a = signal.butter(8, 0.01)  # to be tuned
+            self.history_forces_butter[self.i - ws : self.i + 1] = signal.filtfilt(
+                b, a, self.history_forces_noisy[self.i - ws : self.i + 1], padlen=0
+            )
+        else:
+           
+            
+            if user=='PIVUSER':
+                self.history_forces_noisy[self.i] = (
+                    volts[-1] * param["R4"][:, [0, 1]]
+                )  # get Fx and Fy from volts using calibration matrix
+            elif user=='adminit':
+                self.history_forces_noisy[self.i] = (
+                    volts[-1]
+                )  # DUMMY LINE TO DELETE
+                
+            #No filtering step
+            
+            self.history_forces_butter[self.i - ws : self.i + 1] = self.history_forces_noisy[self.i - ws : self.i + 1]
         self.history_forces[self.i] = self.history_forces_butter[self.i]
         self.history_forces[self.i, 0] -= param["F0"]  # remove drag offset
         

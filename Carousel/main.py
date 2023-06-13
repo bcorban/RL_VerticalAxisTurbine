@@ -3,7 +3,7 @@ import gclib
 from train import RL_loop_sb3,RL_loop_rllib
 from setup_galil import setup_g
 import getpass
-
+from sac_continuous_action import clean_RLloop
 g = gclib.py()
 
 # -----------------Connect to galil and set parameters ----------------------
@@ -21,9 +21,9 @@ setup_g(g)
 
 # --------Start RL training loop-------------------
 
-RL_loop_sb3()
+# RL_loop_sb3()
+clean_RLloop()
 
 # --------------------------------
-
 
 g.GClose()
