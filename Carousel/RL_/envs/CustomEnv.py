@@ -59,7 +59,7 @@ class CustomEnv(gym.Env):
             low=CONFIG_ENV["action_lb"], high=CONFIG_ENV["action_hb"], shape=(1,)
         )
 
-        self.observation_space = Box(low=np.array([-10, -10]), high=np.array([10, 10]))
+        self.observation_space = Box(low=np.array([-10, -10, -10]), high=np.array([10, 10, 10]))
 
         self.N_ep_without_homing = CONFIG_ENV["N_ep_without_homing"] #number of episodes between each homing procedures
         self.N_transient_effects = CONFIG_ENV["N_transient_effects"] #Number of rotations without sampling transitions, at the begining of each episodes
@@ -70,7 +70,7 @@ class CustomEnv(gym.Env):
 
     def step(self, action):  #This method performs one step, i.e. one pitching command, and returns the next state and reward
         print("step")
-        
+        t_1=time.time()
         self.pitch(action) #perform the pitching action
 
         self.read_state() #update state
@@ -129,7 +129,7 @@ class CustomEnv(gym.Env):
             else:
                 terminated = False
         truncated = False
-
+        print(f"\n one step takes {time.time()-t_1}s \n")
         # Return step information
         return self.state, self.reward, terminated, info
 
@@ -142,11 +142,12 @@ class CustomEnv(gym.Env):
         
         N = 100000
         #Initialize all history arrays
+        self.state=np.zeros(3)
         self.history_phase = np.zeros(N)
         self.history_phase_cont = np.zeros(N)
         self.history_pitch_should = np.zeros(N)
         self.history_pitch_is = np.zeros(N)
-        self.history_states = np.zeros((N, 2))
+        self.history_states = np.zeros((N, 3))
         self.history_volts = np.zeros((N, 5))
         self.history_volts_raw = np.zeros((N, 5))
         self.history_time = np.zeros(N)
@@ -219,7 +220,7 @@ class CustomEnv(gym.Env):
     def read_state(self): #reads current state of the blade : from voltages to forces and position 
         print("state")
         self.history_time[self.i] = time.time() - self.t_start #get time
-
+        
         #read galil output (volts)
         galil_output = list(map(float,(c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7],_TPE,_TDF,_TPF")).split()))
         # print(f"\n {galil_output} \n")
@@ -312,8 +313,19 @@ class CustomEnv(gym.Env):
             + param["Finertial"]
         ) / param["f_denom"]
         
+        self.state[:2] = self.history_coeff[self.i] #update state
+        
+        #adding Cr with T/5 time delay. Check in the 500 past measures which one was exactly T/5 seconds away.
+        npast = 500
+        if self.i > npast:
+            t_2=time.time()
+            idx=np.searchsorted(self.history_time[-npast:],self.history_time[self.i]-param["rotT"]/5,side="left")
+            print(f"searchsort takes {time.time()-t_2}s")
+            self.state[2] = self.history_coeff[-npast+idx, 1] #add Cr(t-T/5)
+            
         self.i += 1 #update counter
-        self.state = self.history_coeff[self.i] #update state
+        
+        print(f"\n reading state takes {time.time()-self.history_time[self.i-1]- self.t_start}s \n")
 
     def start_E(self): #Start motor E
         print("Starting motor E")
