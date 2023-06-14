@@ -83,7 +83,18 @@ class CustomEnv(gym.Env):
         # Compute reward ---------------------------------------------
         if user=='PIVUSER':
                         
-            if nrot <= self.N_transient_effects + self.n_rot_ini: #if during transients effects, do not save samples
+            # if nrot <= self.N_transient_effects + self.n_rot_ini: #if during transients effects, do not save samples
+            #     print("transient")
+            #     self.reward = 0
+            #     info = {"transient": True}
+            # else:
+            #     self.reward = (self.state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
+            #     info = {"transient": False}
+            #     self.history_states[self.i] = self.state 
+            #     self.history_action[self.i] = action
+            #     self.history_reward[self.i] = self.reward
+
+            if self.i-self.i_begining<10: #if during transients effects, do not save samples
                 print("transient")
                 self.reward = 0
                 info = {"transient": True}
@@ -200,8 +211,8 @@ class CustomEnv(gym.Env):
         self.read_state()
 
         self.reward = 0
-        if user=='adminit':
-            self.i_begining=self.i
+        # if user=='adminit':
+        self.i_begining=self.i
         if not return_info:
             return self.state
         else:
@@ -214,7 +225,7 @@ class CustomEnv(gym.Env):
 
     def home(self): #calls homing procedure from matlab
         print("homing...")
-        eng.my_quick_home(nargout=0)
+        # eng.my_quick_home(nargout=0)
 
     def read_state(self): #reads current state of the blade : from voltages to forces and position 
         print("reading state")
@@ -238,16 +249,17 @@ class CustomEnv(gym.Env):
         self.history_pitch_is[self.i] = galil_output[7] /m[1]["es"]  # In degrees
          
         ws = 10  # window size for fill outliers and filtering
+
         if self.i > ws:
             self.filloutliers(ws)
             
             if user=='PIVUSER':
                 self.history_forces_noisy[self.i] = (
-                    volts[-1] * param["R4"][:, [0, 1]]
+                    np.dot(np.array(volts),param["R4"][:, 0:2])
                 )  # get Fx and Fy from volts using calibration matrix
             elif user=='adminit':
                 self.history_forces_noisy[self.i] = (
-                    volts[-1]
+                    volts
                 )  # DUMMY LINE TO DELETE
                 
             #filtering step
@@ -260,11 +272,11 @@ class CustomEnv(gym.Env):
             
             if user=='PIVUSER':
                 self.history_forces_noisy[self.i] = (
-                    volts[-1] * param["R4"][:, [0, 1]]
+                    np.dot(np.array(volts),param["R4"][:, 0:2])
                 )  # get Fx and Fy from volts using calibration matrix
             elif user=='adminit':
                 self.history_forces_noisy[self.i] = (
-                    volts[-1]
+                    volts
                 )  # DUMMY LINE TO DELETE
                 
             #No filtering step
@@ -337,13 +349,13 @@ class CustomEnv(gym.Env):
 
     def stop_E(self): #Stop motor E
         print("Stopping motor E")
-        if user=="PIVUSER":
-            g.GCommand("ST")
+        # if user=="PIVUSER":
+            # g.GCommand("ST")
         
     def pitch(self,action_abs): #perform an absolute pitching order
         print("pitching")
-        if user=="PIVUSER":
-            g.GCommand(f"PAF={action_abs}")
+        # if user=="PIVUSER":
+            # g.GCommand(f"PAF={action_abs}")
         
     def wait_N_rot(self, N,save_in_state=False): #Wait N rotations from motor E
         print(f"waiting for {N} periods")
@@ -354,19 +366,19 @@ class CustomEnv(gym.Env):
         i_ini= self.i
         
         if save_in_state : #Used only for getting reference runs, during normal runs we want states to be 0 if not yet during policy application
-            if user=="PIVUSER":
-                while self.history_phase_cont[self.i] - phase_ini < N * 360:
-                    self.read_state()
-                    self.history_states[self.i] = self.state
-            elif user=="adminit":
+            # if user=="PIVUSER":
+            #     while self.history_phase_cont[self.i] - phase_ini < N * 360:
+            #         self.read_state()
+            #         self.history_states[self.i] = self.state
+            # elif user=="adminit":
                 while self.i-i_ini<15:
                     self.read_state()
                     self.history_states[self.i] = self.state
         else:
-            if user=="PIVUSER":
-                while self.history_phase_cont[self.i] - phase_ini < N * 360:
-                    self.read_state()
-            elif user=="adminit":
+            # if user=="PIVUSER":
+            #     while self.history_phase_cont[self.i] - phase_ini < N * 360:
+            #         self.read_state()
+            # elif user=="adminit":
                 while self.i-i_ini<15: 
                     self.read_state()
             

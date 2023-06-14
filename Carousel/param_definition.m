@@ -57,7 +57,7 @@ param.rotT = 1 / param.rotf; % Rotation period in second
 NI.rate= 1000; % [Hz] Scan rate for NI card
 NI.channels = [0 1 2 3 4]; % Analog input channels to use
 NI.device = 'cDAQ1Mod1Mod1'; %
-% NI.calmat = 'carou_calimat4.mat'; % For Carouuuuuuuusel
+NI.calmat = 'carou_calimat4.mat'; % For Carouuuuuuuusel
 param.NI = NI;
 
 %% Additional pre-processicng parameters, s.a. forces
@@ -76,7 +76,7 @@ CDnaca0 = 0.02;
 param.F0 = (param.Uinf).^2*0.5*param.rho*(param.Csp*param.spr^2*pi*2+CDnaca0*param.c*param.span);
 
 
-save('param.mat','param')
+
 
 
 % Calibration matrices. 
@@ -84,5 +84,6 @@ save('param.mat','param')
 % Also, columns 3 and 4 can be removed from the matrix (also because I
 % don't need to compute Mx and My)
 
-% load(NI.calmat,'R4');
-% param.R4 = R4(:,[1,2,5]);
+load(NI.calmat,'R4');
+param.R4 = R4(:,[1,2,5]);
+save('/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/param.mat','param')
