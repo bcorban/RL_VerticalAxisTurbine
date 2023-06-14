@@ -18,7 +18,6 @@ from param_matlab import param, m, NI
 import getpass
 import ray
 
-print(gym.__version__)
 
 user=getpass.getuser()
 if user=='PIVUSER':
@@ -129,7 +128,7 @@ class CustomEnv(gym.Env):
             else:
                 terminated = False
         truncated = False
-        print(f"\n one step takes {time.time()-t_1}s \n")
+        # print(f"\n one step takes {time.time()-t_1}s \n")
         # Return step information
         return self.state, self.reward, terminated, info
 
@@ -159,9 +158,9 @@ class CustomEnv(gym.Env):
         self.history_reward = np.zeros(N)
         self.i = 0 #iteration/timestep counter
         
-        print(self.episode_counter)
+        # print(self.episode_counter)
         if self.episode_counter > 1:  # if not first episode
-            print("not first ep")
+            print("reset")
             if user =='PIVUSER':
                 eng.stop_lc(nargout=0) #stop loadcell
             self.save_data() #save data from previous ep
@@ -218,7 +217,7 @@ class CustomEnv(gym.Env):
         eng.my_quick_home(nargout=0)
 
     def read_state(self): #reads current state of the blade : from voltages to forces and position 
-        print("state")
+        print("reading state")
         self.history_time[self.i] = time.time() - self.t_start #get time
         
         #read galil output (volts)
@@ -320,12 +319,12 @@ class CustomEnv(gym.Env):
         if self.i > npast:
             t_2=time.time()
             idx=np.searchsorted(self.history_time[-npast:],self.history_time[self.i]-param["rotT"]/5,side="left")
-            print(f"searchsort takes {time.time()-t_2}s")
+            # print(f"searchsort takes {time.time()-t_2}s")
             self.state[2] = self.history_coeff[-npast+idx, 1] #add Cr(t-T/5)
             
         self.i += 1 #update counter
         
-        print(f"\n reading state takes {time.time()-self.history_time[self.i-1]- self.t_start}s \n")
+        # print(f"\n reading state takes {time.time()-self.history_time[self.i-1]- self.t_start}s \n")
 
     def start_E(self): #Start motor E
         print("Starting motor E")
@@ -338,28 +337,46 @@ class CustomEnv(gym.Env):
 
     def stop_E(self): #Stop motor E
         print("Stopping motor E")
-        # g.GCommand("ST")
+        if user=="PIVUSER":
+            g.GCommand("ST")
         
     def pitch(self,action_abs): #perform an absolute pitching order
         print("pitching")
-        # g.GCommand(f"PAF={action_abs}")
+        if user=="PIVUSER":
+            g.GCommand(f"PAF={action_abs}")
         
-    def wait_N_rot(self, N): #Wait N rotations from motor E
+    def wait_N_rot(self, N,save_in_state=False): #Wait N rotations from motor E
         print(f"waiting for {N} periods")
-        # self.read_state()
-        # phase_ini = self.history_phase_cont[self.i]
-        # while self.history_phase_cont[self.i] - phase_ini < N * 360:
-        #     self.read_state()
+        if user=="PIVUSER":
+            self.read_state()
+            phase_ini = self.history_phase_cont[self.i]
         self.read_state()
         i_ini= self.i
-        while self.i-i_ini<15: #DUMMY LINE TO DELETE
-            self.read_state()
-
+        
+        if save_in_state : #Used only for getting reference runs, during normal runs we want states to be 0 if not yet during policy application
+            if user=="PIVUSER":
+                while self.history_phase_cont[self.i] - phase_ini < N * 360:
+                    self.read_state()
+                    self.history_states[self.i] = self.state
+            elif user=="adminit":
+                while self.i-i_ini<15:
+                    self.read_state()
+                    self.history_states[self.i] = self.state
+        else:
+            if user=="PIVUSER":
+                while self.history_phase_cont[self.i] - phase_ini < N * 360:
+                    self.read_state()
+            elif user=="adminit":
+                while self.i-i_ini<15: 
+                    self.read_state()
+            
+            
     def save_data(self, ms=2): #export data from an episode into a .mat file
         print("saving data...")
-        # path=f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms00{ms}mpt{'{:04}'.format(self.episode_counter)}.mat"
-        # dict={'param':param,'time':self.history_time,'phase':self.history_phase,'phase_cont':self.history_phase_cont,'pitch_is':self.history_pitch_is,'pitch_should':self.history_pitch_should, 'action':self.history_action,'volts_raw':self.history_volts_raw, 'volts': self.history_volts, 'forces_noisy' : self.history_forces_noisy, 'forces_butter': self.history_forces_butter,'forces':self.history_forces,'coeff':self.history_coeff, 'state':self.history_states}
-        # savemat(path,dict)
+        if user=="PIVUSER":
+            path=f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms00{ms}mpt{'{:04}'.format(self.episode_counter)}.mat"
+            dict={'param':param,'time':self.history_time,'phase':self.history_phase,'phase_cont':self.history_phase_cont,'pitch_is':self.history_pitch_is,'pitch_should':self.history_pitch_should, 'action':self.history_action,'volts_raw':self.history_volts_raw, 'volts': self.history_volts, 'forces_noisy' : self.history_forces_noisy, 'forces_butter': self.history_forces_butter,'forces':self.history_forces,'coeff':self.history_coeff, 'state':self.history_states}
+            savemat(path,dict)
 
     def get_offset(self): #measure offset 
         t_offset_pause = 5
@@ -389,11 +406,9 @@ class CustomEnv(gym.Env):
         replace=np.where(mask, med + 3 / MAD * np.sign(
                 self.history_volts[self.i] - med
             ),self.history_volts[self.i])
+        
         self.history_volts[self.i]=replace
-        # if np.abs(self.history_volts[self.i] - med) > 3 / MAD:
-        #     self.history_volts[self.i] = med + 3 / MAD * np.sign(
-        #         self.history_volts[self.i] - med
-        #     )
+      
         if window == np.ones((ws,5)) * med:
             print('flatlined')
             self.history_volts[self.i - ws : self.i + 1,:] = -(

@@ -17,41 +17,41 @@ tau=30
 
 if __name__=="__main__":
     df=pd.read_pickle("../data/feedback_control_data_seb.pkl")
-    
+    print(1)
     #FILTERING STEP----------------------------------------
     
-    b, a = signal.butter(8, 0.01)
-    y = signal.filtfilt(b, a, df['Cm'].values, padlen=150)
-    df['Cm']=y
+    # b, a = signal.butter(8, 0.01)
+    # y = signal.filtfilt(b, a, df['Cm'].values, padlen=150)
+    # df['Cm']=y
     
     #----------------------------------------
     #NORMALIZATION STEP----------------------------------------
     # create numpy arrays to store the means and stds
     means = np.zeros((len(cols_to_keep_in),))
     stds = np.zeros((len(cols_to_keep_in),))
-
+    print(1)
     # normalize each column
-    for i, col in enumerate(cols_to_keep_in):
+    # for i, col in enumerate(cols_to_keep_in):
         
-        # calculate the mean and standard deviation
-        col_mean = df[col].mean()
-        col_std = df[col].std()
+    #     # calculate the mean and standard deviation
+    #     col_mean = df[col].mean()
+    #     col_std = df[col].std()
         
-        # store the mean and standard deviation in the numpy arrays
-        means[i] = col_mean
-        stds[i] = col_std
+    #     # store the mean and standard deviation in the numpy arrays
+    #     means[i] = col_mean
+    #     stds[i] = col_std
         
-        # normalize the column
-        df[col] = (df[col] - col_mean) / col_std
+    #     # normalize the column
+    #     df[col] = (df[col] - col_mean) / col_std
 
-    # save the means and stds to files
-    np.savetxt('NNet_files/means.txt', means)
-    np.savetxt('NNet_files/stds.txt', stds)
+    # # save the means and stds to files
+    # np.savetxt('NNet_files/means.txt', means)
+    # np.savetxt('NNet_files/stds.txt', stds)
     #----------------------------------------
 
     all_Cpmean = df['Cp_mean']
     unique_Cp_mean = all_Cpmean.unique().tolist()
-    
+    print(1)
     # define the proportions of the three sets
     train_prop = 0.7
     val_prop = 0.15
@@ -67,7 +67,7 @@ if __name__=="__main__":
 
     # create a list to store the category assignments
     categories_list = []
-
+    print(1)
     # assign each value in the original list to a category randomly
     for i in range(len(unique_Cp_mean)):
         if train_count > 0:
@@ -83,6 +83,8 @@ if __name__=="__main__":
     # shuffle the categories list randomly
     random.shuffle(categories_list)
 
+    print(1)
+    
     x_train=np.empty((0, len(cols_to_keep_in)+(m-1)*len(cols_to_keep_shift)+1))
     x_val=np.empty((0, len(cols_to_keep_in)+(m-1)*len(cols_to_keep_shift)+1))
     x_test=np.empty((0, len(cols_to_keep_in)+(m-1)*len(cols_to_keep_shift)+1))
@@ -105,9 +107,9 @@ if __name__=="__main__":
         df_2tau=sub_df[cols_to_keep_out][2*tau:].reset_index(drop=True)
         df_diff_pitch=df_2tau["pitch"]-df_tau["pitch"]
         df_merged = pd.concat([df_tau,df_diff_pitch,df_0], axis=1)
-        # list_max.append(np.max(df_diff_pitch))
-        # list_min.append(np.min(df_diff_pitch))
-        # list_mean.append(np.mean(df_diff_pitch))
+        list_max.append(np.max(df_diff_pitch))
+        list_min.append(np.min(df_diff_pitch))
+        list_mean.append(np.mean(df_diff_pitch))
         if i<1:
             np.savetxt("../data/phase.npy",np.array(df[df['Cp_mean'] == value][cols_to_keep_in].iloc[11270:11270+3*1127,:][tau:-tau].reset_index(drop=True))[::tau,0])
             #np.savetxt("../data/phase.npy",np.array(df_tau)[::tau,0])
@@ -125,9 +127,11 @@ if __name__=="__main__":
         elif category =='val':
             x_val=np.vstack((x_val,df_merged.values))
             y_val=np.vstack((y_val,df_2tau.values))
-    # print(list_max)
-    # print(list_min)
-    # print(list_mean)
+    print("max")
+    print(np.max(np.array(list_max)))
+    print("min")
+    print(np.min(np.array(list_max)))
+    print(np.mean(np.array(list_mean)))
 
     #USED TO GENERATE STARTING STATES FOR RL
     i_Cpmax=np.argmax(unique_Cp_mean)
@@ -140,6 +144,7 @@ if __name__=="__main__":
     df_2tau=sub_df[cols_to_keep_out][2*tau:].reset_index(drop=True)
 
     df_diff_pitch=df_2tau["pitch"]-df_tau["pitch"]
+    
     df_merged = pd.concat([df_tau,df_diff_pitch,df_0], axis=1)
 
 
@@ -159,7 +164,7 @@ if __name__=="__main__":
     validation_dataset=MLPmodel.Dataset(T_x_val,T_y_val)
         
         
-    torch.save(train_dataset,"./NNet_files/training_set.pt")
-    torch.save(test_dataset,"./NNet_files/test_set.pt")
-    torch.save(validation_dataset,"./NNet_files/validation_set.pt")
-    np.savetxt("./NNet_files/test_index.npy",np.array(test_index))
+    # torch.save(train_dataset,"./NNet_files/training_set.pt")
+    # torch.save(test_dataset,"./NNet_files/test_set.pt")
+    # torch.save(validation_dataset,"./NNet_files/validation_set.pt")
+    # np.savetxt("./NNet_files/test_index.npy",np.array(test_index))

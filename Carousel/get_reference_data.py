@@ -8,27 +8,23 @@ from RL_.envs.CustomEnv import CustomEnv
 import gymnasium as gym
 import RL_
 import matlab.engine
-g = gclib.py()
-
-# -----------------Connect to galil and set parameters ----------------------
-
 
 eng = matlab.engine.start_matlab()
 path = "/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel"
 eng.addpath(path, nargout=0)
 path = "/Users/PIVUSER/Documents/MATLAB"
 eng.addpath(path, nargout=0)
+
 g = gclib.py()
 c = g.GCommand
 g.GOpen("192.168.255.200 --direct -s ALL")
 print(g.GInfo())
 
-env = gym.make('CustomEnv')
+setup_g(g)
 
+env = gym.make('CustomEnv')
 env.reset()
-while env.history_phase_cont[env.i]// 360<30:
-    env.read_state()
-env.save_data()
-env.stop_E()
+env.wait_N_rot(40)
+env.close()
 
 g.GClose()
