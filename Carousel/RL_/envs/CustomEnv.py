@@ -385,10 +385,10 @@ class CustomEnv(gym.Env):
             
     def save_data(self, ms=2): #export data from an episode into a .mat file
         print("saving data...")
-        if user=="PIVUSER":
-            path=f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms00{ms}mpt{'{:04}'.format(self.episode_counter)}.mat"
-            dict={'param':param,'time':self.history_time,'phase':self.history_phase,'phase_cont':self.history_phase_cont,'pitch_is':self.history_pitch_is,'pitch_should':self.history_pitch_should, 'action':self.history_action,'volts_raw':self.history_volts_raw, 'volts': self.history_volts, 'forces_noisy' : self.history_forces_noisy, 'forces_butter': self.history_forces_butter,'forces':self.history_forces,'coeff':self.history_coeff, 'state':self.history_states}
-            savemat(path,dict)
+        # if user=="PIVUSER":
+            # path=f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms00{ms}mpt{'{:04}'.format(self.episode_counter)}.mat"
+            # dict={'param':param,'time':self.history_time,'phase':self.history_phase,'phase_cont':self.history_phase_cont,'pitch_is':self.history_pitch_is,'pitch_should':self.history_pitch_should, 'action':self.history_action,'volts_raw':self.history_volts_raw, 'volts': self.history_volts, 'forces_noisy' : self.history_forces_noisy, 'forces_butter': self.history_forces_butter,'forces':self.history_forces,'coeff':self.history_coeff, 'state':self.history_states}
+            # savemat(path,dict)
 
     def get_offset(self): #measure offset 
         t_offset_pause = 5

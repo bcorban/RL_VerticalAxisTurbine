@@ -7,7 +7,6 @@ from distutils.util import strtobool
 
 import gym
 import numpy as np
-print(gym.__version__)
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,6 +15,7 @@ from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 from replay_buffer import SB3_CustomReplayBuffer
 import RL_ 
+
 
 def parse_args():
     # fmt: off
@@ -41,7 +41,7 @@ def parse_args():
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=500,
+    parser.add_argument("--total-timesteps", type=int, default=1000,
         help="total timesteps of the experiments")
     parser.add_argument("--buffer-size", type=int, default=int(1e6),
         help="the replay memory buffer size")
@@ -49,7 +49,7 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--tau", type=float, default=0.005,
         help="target smoothing coefficient (default: 0.005)")
-    parser.add_argument("--batch-size", type=int, default=256,
+    parser.add_argument("--batch-size", type=int, default=512,
         help="the batch size of sample from the reply memory")
     parser.add_argument("--learning-starts", type=int, default=20, #TO CHANGE (was 5e3) !!!
         help="timestep to start learning")
@@ -57,7 +57,7 @@ def parse_args():
         help="the learning rate of the policy network optimizer")
     parser.add_argument("--q-lr", type=float, default=1e-3,
         help="the learning rate of the Q network network optimizer")
-    parser.add_argument("--policy-frequency", type=int, default=2,
+    parser.add_argument("--policy-frequency", type=int, default=1, #was 2
         help="the frequency of training policy (delayed)")
     parser.add_argument("--target-network-frequency", type=int, default=1, # Denis Yarats' implementation delays this by 2.
         help="the frequency of updates for the target nerworks")
@@ -177,6 +177,7 @@ def clean_RLloop():
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
+    print(f"running on {device}")
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
     
@@ -221,10 +222,15 @@ def clean_RLloop():
     )
     
     start_time = time.time()
-
+    SPS_time=time.time()
+    time_total=[]
+    time_1=[]
+    time_2=[]
+    SPS_list=[]
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
     for global_step in range(args.total_timesteps):
+        t_1=time.time()
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
@@ -252,10 +258,10 @@ def clean_RLloop():
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
-        
+        time_1.append(time.time()-t_1)
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
-            t_3=time.time()
+            
             data = rb.sample(args.batch_size)
             with torch.no_grad():
                 next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
@@ -273,11 +279,13 @@ def clean_RLloop():
             q_optimizer.zero_grad()
             qf_loss.backward()
             q_optimizer.step()
-
+            
             if global_step % args.policy_frequency == 0:  # TD 3 Delayed update support
                 for _ in range(
                     args.policy_frequency
                 ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
+                    print("update")
+                    t_3=time.time()
                     pi, log_pi, _ = actor.get_action(data.observations)
                     qf1_pi = qf1(data.observations, pi)
                     qf2_pi = qf2(data.observations, pi)
@@ -288,6 +296,7 @@ def clean_RLloop():
                     actor_loss.backward()
                     actor_optimizer.step()
 
+                    time_2.append(time.time()-t_3)
                     if args.autotune:
                         with torch.no_grad():
                             _, log_pi, _ = actor.get_action(data.observations)
@@ -304,7 +313,8 @@ def clean_RLloop():
                     target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
                 for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
                     target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
-            print(f"\n updating policy takes {time.time()-t_3}s\n")
+            # print(f"\n updating policy takes {time.time()-t_3}s\n")
+            
             if global_step % 100 == 0:
                 writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
                 writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
@@ -313,13 +323,25 @@ def clean_RLloop():
                 writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                 writer.add_scalar("losses/alpha", alpha, global_step)
-                print("SPS:", int(global_step / (time.time() - start_time)))
+                print("SPS:", int(100 / (time.time() - SPS_time)))
+                # print("SPS:", int(global_step / (time.time() - start_time)))
+                SPS_list.append( int(100/ (time.time() - SPS_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
                 if args.autotune:
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
-
+                SPS_time=time.time()
+            time_total.append(time.time()-t_1)
+    print("SPS")
+    print( int(global_step / (time.time() - start_time)))
     envs.close()
     writer.close()
-
+    print("Mean time for sampling transition")
+    print(np.mean(np.array(time_1)))
+    print("Mean time for updating policy")
+    print(np.mean(np.array(time_2)))
+    print("Mean time for whole loop")
+    print(np.mean(np.array(time_total)))
+    print("SPS")
+    print(SPS_list)
 if __name__ == "__main__":
     clean_RLloop()
