@@ -68,7 +68,7 @@ class CustomEnv(gym.Env):
         print("init")
 
     def step(self, action):  #This method performs one step, i.e. one pitching command, and returns the next state and reward
-        print("step")
+        # print("step")
         t_1=time.time()
         self.pitch(action) #perform the pitching action
 
@@ -181,7 +181,10 @@ class CustomEnv(gym.Env):
                 self.stop_E()
                 self.home()
                 if user =='PIVUSER':
-                    eng.start_lc(nargout=0)  # Start the loadcell
+                    try:
+                        eng.start_lc(nargout=0)  # Start the loadcell
+                    except:
+                        print("Did not start loadcell !!")
                 self.t_start = time.time()
                 
                 self.get_offset() #get new offset while E stopped
@@ -191,14 +194,20 @@ class CustomEnv(gym.Env):
 
             else:
                 if user =='PIVUSER':
-                    eng.start_lc(nargout=0)  # Start the loadcell
+                    try:
+                        eng.start_lc(nargout=0)  # Start the loadcell
+                    except:
+                        print("Did not start loadcell !!")
                 self.t_start = time.time()
                 self.n_rot_ini=float(c("MG _TPE"))/m[0]["es"] // 360 #get initial number of rotation since galil start
                 
         else: # first episode : start load cell, get offset, start motor
             print("first episode")
             if user =='PIVUSER':
-                eng.start_lc(nargout=0)  # Start the loadcell
+                try:
+                        eng.start_lc(nargout=0)  # Start the loadcell
+                except:
+                    print("Did not start loadcell !!")
             self.t_start = time.time()
             self.get_offset()
             self.start_E()
@@ -228,12 +237,15 @@ class CustomEnv(gym.Env):
         # eng.my_quick_home(nargout=0)
 
     def read_state(self): #reads current state of the blade : from voltages to forces and position 
-        print("reading state")
+        # print("reading state")
         self.history_time[self.i] = time.time() - self.t_start #get time
-        
+
         #read galil output (volts)
-        galil_output = list(map(float,(c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7],_TPE,_TDF,_TPF")).split()))
-        # print(f"\n {galil_output} \n")
+        k=0
+        while k<10:
+            galil_output = list(map(float,(c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7],_TPE,_TDF,_TPF")).split()))
+            k+=1
+
         galil_output[5]-=self.n_rot_ini*360*m[0]['es'] #substract the starting phase of the episode
 
         # get voltages for the loads, and substract measured offset
@@ -345,7 +357,8 @@ class CustomEnv(gym.Env):
         # g.GCommand("BGE")
 
         # # initialize position tracking
-        # g.GCommand("PTF=1")
+        g.GCommand("SHF")
+        g.GCommand("PTF=1")
 
     def stop_E(self): #Stop motor E
         print("Stopping motor E")
@@ -353,9 +366,9 @@ class CustomEnv(gym.Env):
             # g.GCommand("ST")
         
     def pitch(self,action_abs): #perform an absolute pitching order
-        print("pitching")
-        # if user=="PIVUSER":
-            # g.GCommand(f"PAF={action_abs}")
+        # print("pitching")
+        if user=="PIVUSER":
+            g.GCommand(f"PAF={int(action_abs*m[1]['ms'])}")
         
     def wait_N_rot(self, N,save_in_state=False): #Wait N rotations from motor E
         print(f"waiting for {N} periods")
@@ -409,23 +422,29 @@ class CustomEnv(gym.Env):
 
 
     def filloutliers(self, ws): #replace outlier values if they exceed three times the MAD value around the median, in a window of ws timesteps
-        window = self.history_volts[self.i - ws : self.i + 1]
-        med = np.median(window)
-        MAD = 1.4826 * np.median(np.abs(window - med))
+        window =np.array(self.history_volts[self.i - ws : self.i + 1])
+        med = np.median(window,axis=0
+                        )
+        MAD = 1.4826 * np.median(np.abs(window - np.tile(med,(len(window),1))),axis=0)
 
-        mask= np.abs(self.history_volts[self.i] - med) > MAD
+        mask= np.abs(self.history_volts[self.i] - med) >3* MAD
 
-        replace=np.where(mask, med + 3 / MAD * np.sign(
+        replace=np.where(mask, med + 3 * MAD * np.sign(
                 self.history_volts[self.i] - med
             ),self.history_volts[self.i])
         
         self.history_volts[self.i]=replace
-      
-        if window == np.ones((ws,5)) * med:
+        flatlined=False
+        for l in range(5):
+            if np.all(window[:,l]==med[l]*np.ones(len(window))):
+                flatlined=True
+                break
+        if flatlined:
             print('flatlined')
             self.history_volts[self.i - ws : self.i + 1,:] = -(
                 self.history_volts_raw[self.i - ws : self.i + 1,:] - self.offset
             )
+            
             
     def close(self): #close galil connection when closing environment
         print("Closing environment")

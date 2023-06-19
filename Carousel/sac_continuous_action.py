@@ -20,7 +20,7 @@ import RL_
 def parse_args():
     # fmt: off
     parser = argparse.ArgumentParser()
-    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
+    parser.add_argument("--exp-name", type=str, default="SAC_VAWT",
         help="the name of this experiment")
     parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
@@ -28,9 +28,9 @@ def parse_args():
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, cuda will be enabled by default")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
-    parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
+    parser.add_argument("--wandb-project-name", type=str, default="RL_VAWT",
         help="the wandb's project name")
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
@@ -105,7 +105,7 @@ class SoftQNetwork(nn.Module):
 
 LOG_STD_MAX = 2
 LOG_STD_MIN = -5
-
+CHECKPOINT_FREQUENCY = 50
 
 class Actor(nn.Module):
     def __init__(self, env):
@@ -222,11 +222,16 @@ def clean_RLloop():
     )
     
     start_time = time.time()
+    mean_r=0
+    mean_cp=0
+    update=0
+
     SPS_time=time.time()
     time_total=[]
     time_1=[]
     time_2=[]
     SPS_list=[]
+
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
     for global_step in range(args.total_timesteps):
@@ -240,15 +245,25 @@ def clean_RLloop():
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(actions)
-
+        
         # TRY NOT TO MODIFY: record rewards for plotting purposes
+        mean_r+=rewards[0]
+        mean_cp+=rewards[0]*4-2
+
+        if global_step%50==0:
+            writer.add_scalar("charts/mean_reward_last_50", mean_r/50, global_step)
+            writer.add_scalar("charts/mean_cp_last_50", mean_cp/50, global_step)
+            mean_r=0
+            mean_cp=0
+
         for info in infos:
+            
             if "episode" in info.keys():
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 break
-
+        
         # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
         real_next_obs = next_obs.copy()
         for idx, d in enumerate(dones):
@@ -258,7 +273,7 @@ def clean_RLloop():
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
-        time_1.append(time.time()-t_1)
+        
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             
@@ -284,7 +299,8 @@ def clean_RLloop():
                 for _ in range(
                     args.policy_frequency
                 ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
-                    print("update")
+                    update+=1
+                    # print("update")
                     t_3=time.time()
                     pi, log_pi, _ = actor.get_action(data.observations)
                     qf1_pi = qf1(data.observations, pi)
@@ -315,6 +331,7 @@ def clean_RLloop():
                     target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
             # print(f"\n updating policy takes {time.time()-t_3}s\n")
             
+            time_1.append(time.time()-t_1)
             if global_step % 100 == 0:
                 writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
                 writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
@@ -330,7 +347,13 @@ def clean_RLloop():
                 if args.autotune:
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
                 SPS_time=time.time()
+                
+            if update % CHECKPOINT_FREQUENCY == 0:
+                torch.save(actor.state_dict(), f"{wandb.run.dir}/actor.pt")
+                wandb.save(f"{wandb.run.dir}/actor.pt", policy="now")
+            
             time_total.append(time.time()-t_1)
+
     print("SPS")
     print( int(global_step / (time.time() - start_time)))
     envs.close()
@@ -343,5 +366,6 @@ def clean_RLloop():
     print(np.mean(np.array(time_total)))
     print("SPS")
     print(SPS_list)
+
 if __name__ == "__main__":
     clean_RLloop()
