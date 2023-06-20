@@ -351,9 +351,9 @@ def clean_RLloop():
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
                 SPS_time=time.time()
                 
-            if update % CHECKPOINT_FREQUENCY == 0:
-                torch.save(actor.state_dict(), f"{wandb.run.dir}/actor.pt")
-                wandb.save(f"{wandb.run.dir}/actor.pt", policy="now")
+            # if update % CHECKPOINT_FREQUENCY == 0:
+            #     torch.save(actor.state_dict(), f"{wandb.run.dir}/actor.pt")
+            #     wandb.save(f"{wandb.run.dir}/actor.pt", policy="now")
             
             time_total.append(time.time()-t_1)
 

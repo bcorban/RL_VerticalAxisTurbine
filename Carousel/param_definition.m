@@ -84,6 +84,6 @@ param.F0 = (param.Uinf).^2*0.5*param.rho*(param.Csp*param.spr^2*pi*2+CDnaca0*par
 % Also, columns 3 and 4 can be removed from the matrix (also because I
 % don't need to compute Mx and My)
 
-% load(NI.calmat,'R4');
-% param.R4 = R4(:,[1,2,5]);
-% save('/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/param.mat','param')
+load(NI.calmat,'R4');
+param.R4 = R4(:,[1,2,5]);
+save('/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/param.mat','param')

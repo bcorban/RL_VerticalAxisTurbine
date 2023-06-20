@@ -191,14 +191,14 @@ class CustomEnv(gym.Env):
         self.j = 0 #action counter
         
         self.terminated=False
-        daemon=threading.Thread(target=self.continuously_read,daemon=True,name="state_reader")
+        self.daemon=threading.Thread(target=self.continuously_read,daemon=True,name="state_reader")
         
         # print(self.episode_counter)
         if self.episode_counter > 1:  # if not first episode
             print("reset")
             if user =='PIVUSER':
                 eng.stop_lc(nargout=0) #stop loadcell
-            daemon.join()
+            self.daemon.join()
             print("joined")
             self.save_data() #save data from previous ep
             if self.episode_counter % self.N_ep_without_homing == 0:  # if homing needed
@@ -215,7 +215,7 @@ class CustomEnv(gym.Env):
                 self.get_offset() #get new offset while E stopped
                 self.start_E()
                 self.n_rot_ini=float(c("MG _TPE"))/m[0]["es"] // 360 #get initial number of rotation since galil start
-                daemon.start()
+                self.daemon.start()
                 self.wait_N_rot(3) #wait a few rotations 
                 
             else:
@@ -226,7 +226,7 @@ class CustomEnv(gym.Env):
                         print("Did not start loadcell !!")
                 self.t_start = time.time()
                 self.n_rot_ini=float(c("MG _TPE"))/m[0]["es"] // 360 #get initial number of rotation since galil start
-                daemon.start()
+                self.daemon.start()
         else: # first episode : start load cell, get offset, start motor
             print("first episode")
             if user =='PIVUSER':
@@ -238,7 +238,7 @@ class CustomEnv(gym.Env):
             self.get_offset()
             self.start_E()
             self.n_rot_ini=float(c("MG _TPE"))/m[0]["es"] // 360 #get initial number of rotation since galil start
-            daemon.start()
+            self.daemon.start()
             self.wait_N_rot(3)
             
         info = {}
@@ -475,7 +475,7 @@ class CustomEnv(gym.Env):
                 flatlined=True
                 break
         if flatlined:
-            print('flatlined')
+            # print('flatlined')
             self.history_volts[self.i - ws : self.i + 1,:] = -(
                 self.history_volts_raw[self.i - ws : self.i + 1,:] - self.offset
             )
@@ -483,16 +483,20 @@ class CustomEnv(gym.Env):
             
     def close(self): #close galil connection when closing environment
         print("Closing environment")
+        self.terminated=True
         if user =='PIVUSER':
             eng.stop_lc(nargout=0) #stop loadcell
+        self.daemon.join()
         self.save_data()
         self.stop_E()
         g.GClose()
         
     def continuously_read(self):
+        t_1=time.time()
+        i_1=self.i
         while not self.terminated:
-            if self.i%10==0:
-                print(self.i)
+            if self.i%1000==0:
+                 print((self.i-i_1)/(time.time()-t_1))
             self.read_state()
         print("thread_ending")
 
