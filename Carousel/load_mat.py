@@ -77,8 +77,8 @@ def load_mat(filename, var=None):
 
 def get_param():
     eng.param_definition(nargout=0)
-    param=load_mat("/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/param.mat")['param']
-    # param=load_mat("./param.mat")['param']
+    # param=load_mat("/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/param.mat")['param']
+    param=load_mat("./param.mat")['param']
     eng.quit()
     return param
     

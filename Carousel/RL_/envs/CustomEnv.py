@@ -17,7 +17,7 @@ from config_ENV import CONFIG_ENV
 from param_matlab import param, m, NI
 import getpass
 import ray
-
+import threading
 
 user=getpass.getuser()
 if user=='PIVUSER':
@@ -68,16 +68,16 @@ class CustomEnv(gym.Env):
         print("init")
 
     def step(self, action):  #This method performs one step, i.e. one pitching command, and returns the next state and reward
-        # print("step")
-        t_1=time.time()
+        overshoot=False
+        action_abs=self.history_pitch_is[self.i]+action #in degrees
+        if abs(action_abs)>30:
+            action_abs=30*np.sign(action_abs)
+            overshoot=True
+
         self.pitch(action) #perform the pitching action
-
-        self.read_state() #update state
-
-        
-
+        index,next_state=self.i,self.state
         nrot = (
-            self.history_phase_cont[self.i] // 360
+            self.history_phase_cont[index] // 360
         )  #current number of rotation since begining of the episode
 
         # Compute reward ---------------------------------------------
@@ -88,38 +88,56 @@ class CustomEnv(gym.Env):
             #     self.reward = 0
             #     info = {"transient": True}
             # else:
-            #     self.reward = (self.state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
-            #     info = {"transient": False}
-            #     self.history_states[self.i] = self.state 
-            #     self.history_action[self.i] = action
-            #     self.history_reward[self.i] = self.reward
+            #     if overshoot:
+            #             self.reward=-1 #penalize if going over 30
+            #         else:
+            #             self.reward = (next_state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
+            #         info = {"transient": False}
+            #         self.history_states[self.j] = next_state 
+            #         self.history_action[self.j] = action
+            #         self.history_action_abs[self.j]=action_abs
+            #         self.history_reward[self.j] = self.reward
+            #         self.history_timestamp_actions[self.j]=self.history_time[index]
+            #         self.j+=1
 
-            if self.i-self.i_begining<10: #if during transients effects, do not save samples
+            if self.j<10: #if during transients effects, do not save samples
                 print("transient")
                 self.reward = 0
                 info = {"transient": True}
+                self.j+=1
             else:
-                self.reward = (self.state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
+                if overshoot:
+                    self.reward=-1
+                else:
+                    self.reward = (next_state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
                 info = {"transient": False}
-                self.history_states[self.i] = self.state 
-                self.history_action[self.i] = action
-                self.history_reward[self.i] = self.reward
+                self.history_states[self.j] = next_state 
+                self.history_action[self.j] = action
+                self.history_action_abs[self.j]=action_abs
+                self.history_reward[self.j] = self.reward
+                self.history_timestamp_actions[self.j]=self.history_time[index]
+                self.j+=1
             
 
         elif user == 'adminit':
 
-            if self.i-self.i_begining<10: #if during transients effects, do not save samples
+            if self.j<10: #if during transients effects, do not save samples
                 print("transient")
                 self.reward = 0
                 info = {"transient": True}
+                self.j+=1
             else:
-                self.reward = (self.state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
+                if overshoot:
+                    self.reward=-1
+                else:
+                    self.reward = (next_state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
                 info = {"transient": False}
-                self.history_states[self.i] = self.state 
-                self.history_action[self.i] = action
-                self.history_reward[self.i] = self.reward
-                
-            
+                self.history_states[self.j] = next_state 
+                self.history_action[self.j] = action
+                self.history_action_abs[self.j]=action_abs
+                self.history_reward[self.j] = self.reward
+                self.history_timestamp_actions[self.j]=self.history_time[index]
+                self.j+=1
         #--------------------------------------------------------------
         
         # Check if episode terminated ---------------------------------
@@ -127,21 +145,21 @@ class CustomEnv(gym.Env):
         
             if nrot >= self.N_max: 
                 print("terminated")
-                terminated = True
+                self.terminated = True
                 self.pitch(0)  # pitch back to 0 at the end of an episode
             else:
-                terminated = False
+                self.terminated = False
         elif user == 'adminit':
-            if self.i-self.i_begining>20: 
+            if self.j>100: 
                 print("terminated")
-                terminated = True
+                self.terminated = True
                 self.pitch(0)  # pitch back to 0 at the end of an episode
             else:
-                terminated = False
+                self.terminated = False
         truncated = False
         # print(f"\n one step takes {time.time()-t_1}s \n")
         # Return step information
-        return self.state, self.reward, terminated, info
+        return self.state, self.reward, self.terminated, info
 
     def reset(self,
         *,
@@ -166,16 +184,23 @@ class CustomEnv(gym.Env):
         self.history_forces = np.zeros((N, 2))
         self.history_coeff = np.zeros((N, 2))
         self.history_action = np.zeros(N)
+        self.history_action_abs = np.zeros(N)
         self.history_reward = np.zeros(N)
-        self.i = 0 #iteration/timestep counter
+        self.history_timestamp_actions=np.zeros(N)
+        self.i = 0 #timestep counter for continuous_read
+        self.j = 0 #action counter
+        
+        self.terminated=False
+        daemon=threading.Thread(target=self.continuously_read,daemon=True,name="state_reader")
         
         # print(self.episode_counter)
         if self.episode_counter > 1:  # if not first episode
             print("reset")
             if user =='PIVUSER':
                 eng.stop_lc(nargout=0) #stop loadcell
+            daemon.join()
+            print("joined")
             self.save_data() #save data from previous ep
-
             if self.episode_counter % self.N_ep_without_homing == 0:  # if homing needed
                 print("homing")
                 self.stop_E()
@@ -190,8 +215,9 @@ class CustomEnv(gym.Env):
                 self.get_offset() #get new offset while E stopped
                 self.start_E()
                 self.n_rot_ini=float(c("MG _TPE"))/m[0]["es"] // 360 #get initial number of rotation since galil start
+                daemon.start()
                 self.wait_N_rot(3) #wait a few rotations 
-
+                
             else:
                 if user =='PIVUSER':
                     try:
@@ -200,7 +226,7 @@ class CustomEnv(gym.Env):
                         print("Did not start loadcell !!")
                 self.t_start = time.time()
                 self.n_rot_ini=float(c("MG _TPE"))/m[0]["es"] // 360 #get initial number of rotation since galil start
-                
+                daemon.start()
         else: # first episode : start load cell, get offset, start motor
             print("first episode")
             if user =='PIVUSER':
@@ -212,16 +238,18 @@ class CustomEnv(gym.Env):
             self.get_offset()
             self.start_E()
             self.n_rot_ini=float(c("MG _TPE"))/m[0]["es"] // 360 #get initial number of rotation since galil start
+            daemon.start()
             self.wait_N_rot(3)
             
         info = {}
         # -----------------------------------
         
-        self.read_state()
+        # self.read_state()
 
         self.reward = 0
         # if user=='adminit':
         self.i_begining=self.i
+        
         if not return_info:
             return self.state
         else:
@@ -241,10 +269,9 @@ class CustomEnv(gym.Env):
         self.history_time[self.i] = time.time() - self.t_start #get time
 
         #read galil output (volts)
-        k=0
-        while k<10:
-            galil_output = list(map(float,(c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7],_TPE,_TDF,_TPF")).split()))
-            k+=1
+        
+        galil_output = list(map(float,(c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7],_TPE,_TDF,_TPF")).split()))
+           
 
         galil_output[5]-=self.n_rot_ini*360*m[0]['es'] #substract the starting phase of the episode
 
@@ -271,7 +298,7 @@ class CustomEnv(gym.Env):
                 )  # get Fx and Fy from volts using calibration matrix
             elif user=='adminit':
                 self.history_forces_noisy[self.i] = (
-                    volts
+                    volts[:2]
                 )  # DUMMY LINE TO DELETE
                 
             #filtering step
@@ -288,7 +315,7 @@ class CustomEnv(gym.Env):
                 )  # get Fx and Fy from volts using calibration matrix
             elif user=='adminit':
                 self.history_forces_noisy[self.i] = (
-                    volts
+                    volts[:2]
                 )  # DUMMY LINE TO DELETE
                 
             #No filtering step
@@ -345,7 +372,7 @@ class CustomEnv(gym.Env):
             idx=np.searchsorted(self.history_time[-npast:],self.history_time[self.i]-param["rotT"]/5,side="left")
             # print(f"searchsort takes {time.time()-t_2}s")
             self.state[2] = self.history_coeff[-npast+idx, 1] #add Cr(t-T/5)
-            
+
         self.i += 1 #update counter
         
         # print(f"\n reading state takes {time.time()-self.history_time[self.i-1]- self.t_start}s \n")
@@ -357,8 +384,8 @@ class CustomEnv(gym.Env):
         # g.GCommand("BGE")
 
         # # initialize position tracking
-        g.GCommand("SHF")
-        g.GCommand("PTF=1")
+        # g.GCommand("SHF")
+        # g.GCommand("PTF=1")
 
     def stop_E(self): #Stop motor E
         print("Stopping motor E")
@@ -368,39 +395,47 @@ class CustomEnv(gym.Env):
     def pitch(self,action_abs): #perform an absolute pitching order
         # print("pitching")
         if user=="PIVUSER":
-            g.GCommand(f"PAF={int(action_abs*m[1]['ms'])}")
+            # g.GCommand(f"PAF={int(action_abs*m[1]['ms'])}")
+            time.sleep(0.001)
         
-    def wait_N_rot(self, N,save_in_state=False): #Wait N rotations from motor E
+    def wait_N_rot(self, N): #Wait N rotations from motor E
         print(f"waiting for {N} periods")
-        if user=="PIVUSER":
-            self.read_state()
-            phase_ini = self.history_phase_cont[self.i]
-        self.read_state()
+        phase_ini = self.history_phase_cont[self.i]
+        
         i_ini= self.i
         
-        if save_in_state : #Used only for getting reference runs, during normal runs we want states to be 0 if not yet during policy application
-            # if user=="PIVUSER":
-            #     while self.history_phase_cont[self.i] - phase_ini < N * 360:
-            #         self.read_state()
-            #         self.history_states[self.i] = self.state
-            # elif user=="adminit":
-                while self.i-i_ini<15:
-                    self.read_state()
-                    self.history_states[self.i] = self.state
-        else:
-            # if user=="PIVUSER":
-            #     while self.history_phase_cont[self.i] - phase_ini < N * 360:
-            #         self.read_state()
-            # elif user=="adminit":
-                while self.i-i_ini<15: 
-                    self.read_state()
+        # if user=="PIVUSER":
+        #     while self.history_phase_cont[self.i] - phase_ini < N * 360:
+        #         time.sleep(0.001)
+        #         
+        # elif user=="adminit":
+        while self.i-i_ini<15:
+            time.sleep(0.001)
+                
+        
             
             
     def save_data(self, ms=2): #export data from an episode into a .mat file
         print("saving data...")
         # if user=="PIVUSER":
             # path=f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms00{ms}mpt{'{:04}'.format(self.episode_counter)}.mat"
-            # dict={'param':param,'time':self.history_time,'phase':self.history_phase,'phase_cont':self.history_phase_cont,'pitch_is':self.history_pitch_is,'pitch_should':self.history_pitch_should, 'action':self.history_action,'volts_raw':self.history_volts_raw, 'volts': self.history_volts, 'forces_noisy' : self.history_forces_noisy, 'forces_butter': self.history_forces_butter,'forces':self.history_forces,'coeff':self.history_coeff, 'state':self.history_states}
+            # dict={'param':param,
+            #       'time':self.history_time,
+            #       'phase':self.history_phase,
+            #       'phase_cont':self.history_phase_cont,
+            #       'pitch_is':self.history_pitch_is,
+            #       'pitch_should':self.history_pitch_should, 
+            #       'volts_raw':self.history_volts_raw, 
+            #       'volts': self.history_volts, 
+            #       'forces_noisy' : self.history_forces_noisy, 
+            #       'forces_butter': self.history_forces_butter,
+            #       'forces':self.history_forces,
+            #       'coeff':self.history_coeff, 
+            #       'state':self.history_states,
+            #       'action':self.history_action,
+            #       'action_abs':self.history_action_abs,
+            #       'reward':self.history_reward,
+            #       'time_action':self.history_timestamp_actions}
             # savemat(path,dict)
 
     def get_offset(self): #measure offset 
@@ -453,5 +488,11 @@ class CustomEnv(gym.Env):
         self.save_data()
         self.stop_E()
         g.GClose()
-    
+        
+    def continuously_read(self):
+        while not self.terminated:
+            if self.i%10==0:
+                print(self.i)
+            self.read_state()
+        print("thread_ending")
 
