@@ -18,6 +18,7 @@ from param_matlab import param, m, NI
 import getpass
 import ray
 import threading
+from multiprocessing import Process
 
 user=getpass.getuser()
 if user=='PIVUSER':
@@ -69,17 +70,30 @@ class CustomEnv(gym.Env):
 
     def step(self, action):  #This method performs one step, i.e. one pitching command, and returns the next state and reward
         overshoot=False
-        action_abs=self.history_pitch_is[self.i]+action #in degrees
-        if abs(action_abs)>30:
-            action_abs=30*np.sign(action_abs)
-            overshoot=True
+        self.action_abs=self.history_pitch_is[self.i]+action #in degrees
 
-        self.pitch(action) #perform the pitching action
+        
+        if self.action_abs>30:
+            self.action_abs=30
+            overshoot=True
+        elif self.action_abs<-30:
+            self.action_abs=-30
+            overshoot=True
+        
+
+
+        self.action_flag=True
+
+        while self.action_flag:
+            pass
+        # print(time.time()-self.t1)
+
         index,next_state=self.i,self.state
+        
         nrot = (
             self.history_phase_cont[index] // 360
         )  #current number of rotation since begining of the episode
-
+        
         # Compute reward ---------------------------------------------
         if user=='PIVUSER':
                         
@@ -95,7 +109,7 @@ class CustomEnv(gym.Env):
             #         info = {"transient": False}
             #         self.history_states[self.j] = next_state 
             #         self.history_action[self.j] = action
-            #         self.history_action_abs[self.j]=action_abs
+            #         self.history_action_abs[self.j]=self.action_abs
             #         self.history_reward[self.j] = self.reward
             #         self.history_timestamp_actions[self.j]=self.history_time[index]
             #         self.j+=1
@@ -111,33 +125,34 @@ class CustomEnv(gym.Env):
                 else:
                     self.reward = (next_state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
                 info = {"transient": False}
+                
                 self.history_states[self.j] = next_state 
                 self.history_action[self.j] = action
-                self.history_action_abs[self.j]=action_abs
+                self.history_action_abs[self.j]=self.action_abs
                 self.history_reward[self.j] = self.reward
                 self.history_timestamp_actions[self.j]=self.history_time[index]
                 self.j+=1
-            
+                
+                
+        # elif user == 'adminit':
 
-        elif user == 'adminit':
-
-            if self.j<10: #if during transients effects, do not save samples
-                print("transient")
-                self.reward = 0
-                info = {"transient": True}
-                self.j+=1
-            else:
-                if overshoot:
-                    self.reward=-1
-                else:
-                    self.reward = (next_state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
-                info = {"transient": False}
-                self.history_states[self.j] = next_state 
-                self.history_action[self.j] = action
-                self.history_action_abs[self.j]=action_abs
-                self.history_reward[self.j] = self.reward
-                self.history_timestamp_actions[self.j]=self.history_time[index]
-                self.j+=1
+        #     if self.j<10: #if during transients effects, do not save samples
+        #         print("transient")
+        #         self.reward = 0
+        #         info = {"transient": True}
+        #         self.j+=1
+        #     else:
+        #         if overshoot:
+        #             self.reward=-1
+        #         else:
+        #             self.reward = (next_state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
+        #         info = {"transient": False}
+        #         self.history_states[self.j] = next_state 
+        #         self.history_action[self.j] = action
+        #         self.history_action_abs[self.j]=self.action_abs
+        #         self.history_reward[self.j] = self.reward
+        #         self.history_timestamp_actions[self.j]=self.history_time[index]
+        #         self.j+=1
         #--------------------------------------------------------------
         
         # Check if episode terminated ---------------------------------
@@ -159,7 +174,8 @@ class CustomEnv(gym.Env):
         truncated = False
         # print(f"\n one step takes {time.time()-t_1}s \n")
         # Return step information
-        return self.state, self.reward, self.terminated, info
+        
+        return next_state, self.reward, self.terminated, info
 
     def reset(self,
         *,
@@ -189,10 +205,10 @@ class CustomEnv(gym.Env):
         self.history_timestamp_actions=np.zeros(N)
         self.i = 0 #timestep counter for continuous_read
         self.j = 0 #action counter
-        
+        self.action_flag=False
         self.terminated=False
         self.daemon=threading.Thread(target=self.continuously_read,daemon=True,name="state_reader")
-        
+    
         # print(self.episode_counter)
         if self.episode_counter > 1:  # if not first episode
             print("reset")
@@ -394,10 +410,13 @@ class CustomEnv(gym.Env):
         
     def pitch(self,action_abs): #perform an absolute pitching order
         # print("pitching")
-        if user=="PIVUSER":
-            # g.GCommand(f"PAF={int(action_abs*m[1]['ms'])}")
-            time.sleep(0.001)
-        
+        # if user=="PIVUSER":
+        # t=time.time()
+        g.GCommand(f"PAF={int(action_abs*m[1]['ms'])}")
+        # print(time.time()-t)
+            # time.sleep(0.001)
+        # return
+
     def wait_N_rot(self, N): #Wait N rotations from motor E
         print(f"waiting for {N} periods")
         phase_ini = self.history_phase_cont[self.i]
@@ -494,9 +513,24 @@ class CustomEnv(gym.Env):
     def continuously_read(self):
         t_1=time.time()
         i_1=self.i
+        c=False
+
         while not self.terminated:
-            if self.i%1000==0:
-                 print((self.i-i_1)/(time.time()-t_1))
+            
+            if self.action_flag:
+                # c=True
+                
+                # print(f"delay is {time.time()-self.t1}")
+                # t=time.time()
+                g.GCommand(f"PAF={int(self.action_abs*m[1]['ms'])}")
+                # print(f"t {time.time()-t}")
+                self.action_flag=False
+                
+            # if self.i%1000==0:
+            #      print((self.i-i_1)/(time.time()-t_1))
             self.read_state()
+            # if c and self.i%10==0:
+            #     # print(f"t {time.time()-t}")
+            #     c=False
         print("thread_ending")
 

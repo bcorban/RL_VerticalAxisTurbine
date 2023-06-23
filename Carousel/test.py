@@ -6,61 +6,31 @@ import RL_
 import gym
 import matplotlib.pyplot as plt
 import gclib
-# print(torch.cuda.is_available())
+from multiprocessing import Process, Value
 
-# gpu = torch.device('cuda:0') 
+def f (N,n):
+    print("process starts")
+    g = gclib.py()
+    c = g.GCommand
+    g.GOpen("192.168.255.200 --direct -s ALL")
+    for i in range(N):
+        c("MG @AN[1]")
+        print("reading")
+        n.value=i
+        
+if __name__ == '__main__':
+    g = gclib.py()
+    c = g.GCommand
+    g.GOpen("192.168.255.200 --direct -s ALL")
+    num=Value('i',0)
 
-# cpu = torch.device('cpu')
+    p=Process(target=f, args=(10001,num))
+    p.start()
+    while num.value<10000:
+        if num.value%100==0 and num.value>0:
+            m=num.value
+            g.GCommand(f"PAF={0}")
+            print(f"pitch {(m,num.value)}")
 
-# N = 5000
+    p.join()
 
-# # operations sur cpu
-# xc = torch.tensor(np.random.normal(size = (N,N)), device = cpu)
-# yc = torch.tensor(np.random.normal(size = (N,N)), device = cpu)
-
-# t0 = time.time()
-# zc = yc
-# for k in range(1000):
-#     zc = xc*zc
-# zc = torch.sum(zc)
-# print(zc)
-# print(time.time() - t0)
-# print(zc.device)
-
-# # operations sur gpu
-# xg = torch.tensor(np.random.normal(size = (N,N)), device = gpu)
-# yg = torch.tensor(np.random.normal(size = (N,N)), device = gpu)
-
-# t1 = time.time()
-# zg = yg
-# for k in range(1000):
-#     zg = xg*zg
-# zg = torch.sum(zg)
-# print(zg)
-# print(time.time() - t1)
-# print(zg.device)
-
-# print()
-
-
-g = gclib.py()
-c = g.GCommand
-g.GOpen("192.168.255.200 --direct -s ALL")
-
-env=gym.make("RL_/CustomEnv-v0")
-
-env.reset()
-def continuously_read():
-    t=time.time()
-    while time.time()-t<10:
-        env.read_state()
-daemon=threading.Thread(target=continuously_read,daemon=True,name="state_reader")
-save=[]
-ti=time.time()
-daemon.start()
-while time.time()-ti<12:
-    save.append(env.i)
-    time.sleep(0.5)
-print(save)
-
-print()

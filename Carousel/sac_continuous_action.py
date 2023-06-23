@@ -41,7 +41,7 @@ def parse_args():
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=1000,
+    parser.add_argument("--total-timesteps", type=int, default=400,
         help="total timesteps of the experiments")
     parser.add_argument("--buffer-size", type=int, default=int(1e6),
         help="the replay memory buffer size")
@@ -176,6 +176,7 @@ def clean_RLloop():
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    # device = torch.device("cpu")
 
     print(f"running on {device}")
     # env setup
@@ -236,19 +237,22 @@ def clean_RLloop():
     obs = envs.reset()
 
     for global_step in range(args.total_timesteps):
-        t_1=time.time()
+        
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
             
-            obs=[envs.envs[0].history_states[-1]] #added to get the latest state
+            obs=np.array([envs.envs[0].history_states[-1]]) #added to get the latest state
+            
             actions, _, _ = actor.get_action(torch.Tensor(obs).to(device))
+            # time_1.append(time.time()-t_1)
             actions = actions.detach().cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
+        t_1=time.time()
         next_obs, rewards, dones, infos = envs.step(actions)
-        
+        # print(f"step : {time.time()-t_1}")
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         mean_r+=rewards[0]
         mean_cp+=rewards[0]*4-2
@@ -279,7 +283,7 @@ def clean_RLloop():
         
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
-            
+            t_3=time.time()
             data = rb.sample(args.batch_size)
             with torch.no_grad():
                 next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
@@ -304,7 +308,7 @@ def clean_RLloop():
                 ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
                     update+=1
                     # print("update")
-                    t_3=time.time()
+                    
                     pi, log_pi, _ = actor.get_action(data.observations)
                     qf1_pi = qf1(data.observations, pi)
                     qf2_pi = qf2(data.observations, pi)
@@ -315,7 +319,7 @@ def clean_RLloop():
                     actor_loss.backward()
                     actor_optimizer.step()
 
-                    time_2.append(time.time()-t_3)
+                   
                     if args.autotune:
                         with torch.no_grad():
                             _, log_pi, _ = actor.get_action(data.observations)
@@ -333,9 +337,9 @@ def clean_RLloop():
                 for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
                     target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
             # print(f"\n updating policy takes {time.time()-t_3}s\n")
+            time_2.append(time.time()-t_3)
             
-            time_1.append(time.time()-t_1)
-            if global_step % 100 == 0:
+            if global_step % 100== 0:
                 writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
                 writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
                 writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
