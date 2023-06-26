@@ -17,6 +17,7 @@ from replay_buffer import SB3_CustomReplayBuffer
 import RL_ 
 
 
+
 def parse_args():
     # fmt: off
     parser = argparse.ArgumentParser()
@@ -206,13 +207,6 @@ def clean_RLloop():
         alpha = args.alpha
 
     envs.single_observation_space.dtype = np.float32
-    # rb = ReplayBuffer(
-    #     args.buffer_size,
-    #     envs.single_observation_space,
-    #     envs.single_action_space,
-    #     device,
-    #     handle_timeout_termination=True,
-    # )
     
     rb = SB3_CustomReplayBuffer(
         args.buffer_size,
@@ -242,11 +236,7 @@ def clean_RLloop():
         if global_step < args.learning_starts:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
-            
-            obs=np.array([envs.envs[0].history_states[-1]]) #added to get the latest state
-            
             actions, _, _ = actor.get_action(torch.Tensor(obs).to(device))
-            # time_1.append(time.time()-t_1)
             actions = actions.detach().cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
@@ -271,7 +261,7 @@ def clean_RLloop():
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 break
         
-        # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
+        # TRY NOT TO MODIFY: save data to replay buffer; handle `terminal_observation`
         real_next_obs = next_obs.copy()
         for idx, d in enumerate(dones):
             if d:
