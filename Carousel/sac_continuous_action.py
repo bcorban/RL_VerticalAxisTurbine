@@ -230,7 +230,10 @@ if __name__ == '__main__':
         device,
         handle_timeout_termination=True,
     )
-    
+
+    # TRY NOT TO MODIFY: start the game
+    obs = envs.reset()
+
     start_time = time.time()
     mean_r=0
     mean_cp=0
@@ -241,9 +244,6 @@ if __name__ == '__main__':
     time_1=[]
     time_2=[]
     SPS_list=[]
-
-    # TRY NOT TO MODIFY: start the game
-    obs = envs.reset()
 
     for global_step in range(args.total_timesteps):
         
@@ -288,7 +288,7 @@ if __name__ == '__main__':
         
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
-            t_3=time.time()
+            # t_3=time.time()
             data = rb.sample(args.batch_size)
             with torch.no_grad():
                 next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
@@ -342,7 +342,7 @@ if __name__ == '__main__':
                 for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
                     target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
             # print(f"\n updating policy takes {time.time()-t_3}s\n")
-            time_2.append(time.time()-t_3)
+            # time_2.append(time.time()-t_3)
             
             if global_step % 100== 0:
                 writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
@@ -353,30 +353,31 @@ if __name__ == '__main__':
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                 writer.add_scalar("losses/alpha", alpha, global_step)
                 print("SPS:", int(100 / (time.time() - SPS_time)))
+                SPS_time=time.time()
                 # print("SPS:", int(global_step / (time.time() - start_time)))
-                SPS_list.append( int(100/ (time.time() - SPS_time)))
+                # SPS_list.append( int(100/ (time.time() - SPS_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
                 if args.autotune:
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
-                SPS_time=time.time()
+                
                 
             # if update % CHECKPOINT_FREQUENCY == 0:
             #     torch.save(actor.state_dict(), f"{wandb.run.dir}/actor.pt")
             #     wandb.save(f"{wandb.run.dir}/actor.pt", policy="now")
             
-            time_total.append(time.time()-t_1)
+            # time_total.append(time.time()-t_1)
 
     print("SPS")
     print( int(global_step / (time.time() - start_time)))
     envs.close()
     writer.close()
-    print("Mean time for sampling transition")
-    print(np.mean(np.array(time_1)))
-    print("Mean time for updating policy")
-    print(np.mean(np.array(time_2)))
-    print("Mean time for whole loop")
-    print(np.mean(np.array(time_total)))
-    print("SPS")
-    print(SPS_list)
+    # print("Mean time for sampling transition")
+    # print(np.mean(np.array(time_1)))
+    # print("Mean time for updating policy")
+    # print(np.mean(np.array(time_2)))
+    # print("Mean time for whole loop")
+    # print(np.mean(np.array(time_total)))
+    # print("SPS")
+    # print(SPS_list)
 
     g.GClose()

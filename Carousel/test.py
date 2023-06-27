@@ -10,16 +10,16 @@ from multiprocessing import Process, Value,Manager
 import ctypes
 def f (N,n,l):
     print("process starts")
-    # g = gclib.py()
-    # c = g.GCommand
-    # g.GOpen("192.168.255.200 --direct -s ALL")
+    g = gclib.py()
+    c = g.GCommand
+    g.GOpen("192.168.255.200 --direct -s ALL")
     t_1=time.time()
     for i in range(N):
         
-        # c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7]")
-        # print("reading")
-        n.value=i
-        l[:]=[i,1,2]
+        c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7]")
+        print("reading")
+        # n.value=i
+        # l[:]=[i,1,2]
         if i%100==0 and i>0:
             print(i/(time.time()-t_1))
             

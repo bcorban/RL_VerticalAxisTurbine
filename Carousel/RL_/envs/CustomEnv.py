@@ -69,7 +69,7 @@ class CustomEnv(gym.Env):
         print("init")
 
     def step(self, action):  #This method performs one step, i.e. one pitching command, and returns the next state and reward
-        print("step")
+
         overshoot=False
         self.action_abs=self.pitch_is.value+action #in degrees
 
@@ -86,10 +86,9 @@ class CustomEnv(gym.Env):
         
         g.GCommand(f"PAF={int(self.action_abs*m[1]['ms'])}")
         
-        # next_state=self.state
-        # next_state=np.array(next_state)
-        next_state=np.zeros(3)
-        
+        next_state=self.state
+        next_state=np.array(next_state)
+
         # Compute reward ---------------------------------------------
         if user=='PIVUSER':
                         
@@ -290,7 +289,7 @@ class CustomEnv(gym.Env):
         self.save_data()
         
 def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
-    print(terminated.value)
+    
     N = 1000000
     reading_bool.value=False
     #Initialize all history arrays
@@ -311,8 +310,8 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
     
     g = gclib.py()
     c = g.GCommand
-    # g.GOpen("192.168.255.200 --direct -s ALL") #connect galil
-    g.GOpen("192.168.255.25 --direct -s ALL")
+    g.GOpen("192.168.255.200 --direct -s ALL") #connect galil
+
     #-------------------------HOMING-----------------------------------------
     print("homing...")
     # eng.my_quick_home(nargout=0)
@@ -333,13 +332,13 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
     
     #-------START MOTOR------------------------------------------------------
     t_start=time.time()
-    # g.GCommand("SHE")
-    # g.GCommand(f"JGE={int(param['JG'])}")
-    # g.GCommand("BGE")
+    g.GCommand("SHE")
+    g.GCommand(f"JGE={int(param['JG'])}")
+    g.GCommand("BGE")
 
-    # initialize position tracking
-    # g.GCommand("SHF")
-    # g.GCommand("PTF=1")
+    #initialize position tracking
+    g.GCommand("SHF")
+    g.GCommand("PTF=1")
     #--------------------Wait for 3 rotations--------------------------------
     # while float(g.GCommand("MG _TPE"))/m[0]["es"] // 360 <3:
     #     time.sleep(0.001)
@@ -347,9 +346,12 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
     #------------------------------------------------------------------------
     print("begin reading")
     reading_bool.value=True
+    t=time.time()
     while not terminated.value and i<N:
-        # print(i)
-        # print(i)
+        # if i%1000==0 and i>1:
+        #     print(f"Reading freq : {1000/(time.time()-t)}")
+        #     t=time.time()
+
         #----------BEGIN READ STATE-----------------------------------------
         
         history_time[i] = time.time() - t_start #get time
@@ -357,7 +359,7 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
         #read galil output (volts)
         
         galil_output = list(map(float,(c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7],_TPE,_TDF,_TPF")).split()))
-
+     
         # get voltages for the loads, and substract measured offset
         volts_raw = galil_output[0:5] 
         volts = -(volts_raw - offset)
@@ -374,6 +376,8 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
         ws = 10  # window size for fill outliers and filtering
 
         if i > ws:
+            
+        
             #---------------------FILLOUTLIERS-------------------
             window =np.array(history_volts[i - ws : i + 1])
             med = np.median(window,axis=0
@@ -409,6 +413,7 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
             history_forces_butter[i - ws : i + 1] = signal.filtfilt(
                 b, a, history_forces_noisy[i - ws : i + 1], padlen=0
             )
+            
         else:
             
             history_forces_noisy[i] = (
@@ -417,7 +422,7 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
 
             #No filtering step
             history_forces_butter[i - ws : i + 1] = history_forces_noisy[i - ws : i + 1]
-        
+
         history_forces[i] = history_forces_butter[i]
         history_forces[i, 0] -= param["F0"]  # remove drag offset
         
@@ -459,16 +464,16 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
             * np.cos(np.deg2rad(history_pitch_is[i]))
             + param["Finertial"]
         ) / param["f_denom"]
-        sstate=[0,0,0]
-        sstate[:2] = history_coeff[i] #update state
+        
+        state[:2] = history_coeff[i] #update state
         
         #adding Cr with T/5 time delay. Check in the 500 past measures which one was exactly T/5 seconds away.
         npast = 500
         if i > npast:
 
             idx=np.searchsorted(history_time[-npast:],history_time[i]-param["rotT"]/5,side="left")
-            sstate[2] = history_coeff[-npast+idx, 1] #add Cr(t-T/5)
-        state[:]=sstate
+            state[2] = history_coeff[-npast+idx, 1] #add Cr(t-T/5)
+
         i += 1 #update counter   
         # print(i,flush=True)
     print("stop reading",flush=True)
