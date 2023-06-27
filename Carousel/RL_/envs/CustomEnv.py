@@ -34,7 +34,7 @@ if user=='PIVUSER':
     g = gclib.py()
     c = g.GCommand
     g.GOpen("192.168.255.200 --direct -s ALL")
-    print(g.GInfo())
+
 
 elif user == 'adminit':
     sys.path.append("/home/adminit/RL_VerticalAxisTurbine/Carousel/RL_/envs")
@@ -69,6 +69,7 @@ class CustomEnv(gym.Env):
         print("init")
 
     def step(self, action):  #This method performs one step, i.e. one pitching command, and returns the next state and reward
+        print("step")
         overshoot=False
         self.action_abs=self.pitch_is.value+action #in degrees
 
@@ -84,10 +85,10 @@ class CustomEnv(gym.Env):
         t_action=time.time()
         
         g.GCommand(f"PAF={int(self.action_abs*m[1]['ms'])}")
-        
-        next_state=self.state.value
-        
-        
+
+        # next_state=self.state
+        # next_state=np.array(next_state)
+        next_state=np.zeros(3)
         
         # Compute reward ---------------------------------------------
         if user=='PIVUSER':
@@ -180,13 +181,13 @@ class CustomEnv(gym.Env):
         self.episode_counter += 1
         
         self.j = 0 #action counter
-
+        self.reading_bool=Value(c_bool,False)
         self.terminated=Value(c_bool,False)
         self.pitch_is=Value('d',0)
         self.nrot=Value('i',0)
         manager=Manager()
         self.state=manager.list()
-        
+        self.state[:]=[0,0,0]
         if self.episode_counter > 1:  # if not first episode
             print("reset")
             if user =='PIVUSER':
@@ -194,6 +195,7 @@ class CustomEnv(gym.Env):
             
             self.process.join()
             self.save_data() #save data from previous ep
+            self.process=Process(target=continuously_read,args=(self.terminated,self.state,self.nrot,self.pitch_is,self.reading_bool))
             
             if user =='PIVUSER':
                 try:
@@ -201,44 +203,42 @@ class CustomEnv(gym.Env):
                 except:
                     print("Did not start loadcell !!")
             
-            self.process=Process(target=continuously_read,args=(self.terminated,self.state,self.nrot,self.pitch_is))
             self.process.start()
-            self.wait_N_rot(3) #wait a few rotations 
+            
                 
         else: # first episode : start load cell, get offset, start motor
             print("first episode")
+            self.process=Process(target=continuously_read,args=(self.terminated,self.state,self.nrot,self.pitch_is,self.reading_bool))
+
             if user =='PIVUSER':
                 try:
                         eng.start_lc(nargout=0)  # Start the loadcell
                 except:
                     print("Did not start loadcell !!")
-            self.process=Process(target=continuously_read,args=(self.terminated,self.state,self.nrot,self.pitch_is))
+            
             self.process.start()
-            self.wait_N_rot(3) #wait a few rotations 
+           
             
         info = {}
         # -----------------------------------
         
         self.reward = 0
+        while not self.reading_bool.value:
+
+            pass
 
         if not return_info:
-            return self.state.value
+
+            return np.array(self.state)
+            
         else:
-            return self.state.value,info
+            return np.array(self.state),info
 
         
     
     def render(self):
-        print(f"t={self.j} -- state={self.state.value} -- reward={self.reward}")
+        print(f"t={self.j} -- state={self.state} -- reward={self.reward}")
 
-
-    def wait_N_rot(self, N): #Wait N rotations from motor E
-        print(f"waiting for {N} periods")
-        phase_ini = self.nrot.value
-
-        if user=="PIVUSER":
-            while self.nrot- phase_ini < N:
-                pass
          
 
         
@@ -265,9 +265,10 @@ class CustomEnv(gym.Env):
         g.GClose()
         self.save_data()
         
-def continuously_read(terminated,state,rot_number,pitch_is):
+def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
+    print(terminated.value)
     N = 1000000
-    
+    reading_bool.value=False
     #Initialize all history arrays
     
     history_phase = np.zeros(N)
@@ -281,6 +282,7 @@ def continuously_read(terminated,state,rot_number,pitch_is):
     history_forces_butter = np.zeros((N, 2))
     history_forces = np.zeros((N, 2))
     history_coeff = np.zeros((N, 2))
+    offset_volts=np.zeros((10000,5))
     i = 0 #timestep counter 
     
     g = gclib.py()
@@ -293,19 +295,15 @@ def continuously_read(terminated,state,rot_number,pitch_is):
     #-------------------------MEASURE OFFSET---------------------------------
     t_offset_pause = 5
     tic = time.time()
-    i_start = i  # should be 0
+    k=0  # should be 0
     while time.time() - tic < t_offset_pause:
-        history_time[i] = time.time() - t_start
-        history_volts_raw[i] = list(
+        offset_volts[k]= list(
             map(float, (c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7]")).split())
         )
-        i += 1
+        k += 1
         
 
-    offset = np.mean(history_volts_raw[i_start : i + 1])
-    history_volts[i_start : i + 1] = -(
-        history_volts_raw[i_start : i + 1] - offset
-    )
+    offset = np.mean(history_volts_raw[:k])
     #------------------------------------------------------------------------
     
     #-------START MOTOR------------------------------------------------------
@@ -317,10 +315,16 @@ def continuously_read(terminated,state,rot_number,pitch_is):
     # initialize position tracking
     g.GCommand("SHF")
     g.GCommand("PTF=1")
+    #--------------------Wait for 3 rotations--------------------------------
+    # while float(g.GCommand("MG _TPE"))/m[0]["es"] // 360 <3:
+    #     time.sleep(0.001)
     
     #------------------------------------------------------------------------
-    
-    while not terminated and i<N:
+    print("begin reading")
+    reading_bool.value=True
+    while not terminated.value and i<N:
+        # print(i)
+        # print(i)
         #----------BEGIN READ STATE-----------------------------------------
         
         history_time[i] = time.time() - t_start #get time
@@ -338,7 +342,7 @@ def continuously_read(terminated,state,rot_number,pitch_is):
         #get the phase and pitch of the blade
         history_phase[i] = galil_output[5] /m[0]["es"] % 360  # In degrees
         history_phase_cont[i] = galil_output[5] /m[0]["es"]  # In degrees
-        rot_number.value=galil_output[5] /m[0]["es"] // 360 
+        rot_number.value=int(galil_output[5] /m[0]["es"] // 360) 
         history_pitch_should[i] = galil_output[6] /m[1]["ms"] # In degrees
         history_pitch_is[i] = galil_output[7] /m[1]["es"]  # In degrees
         pitch_is.value=history_pitch_is[i]
@@ -430,18 +434,20 @@ def continuously_read(terminated,state,rot_number,pitch_is):
             * np.cos(np.deg2rad(history_pitch_is[i]))
             + param["Finertial"]
         ) / param["f_denom"]
-        
-        state[:2] = history_coeff[i] #update state
+        sstate=[0,0,0]
+        sstate[:2] = history_coeff[i] #update state
         
         #adding Cr with T/5 time delay. Check in the 500 past measures which one was exactly T/5 seconds away.
         npast = 500
         if i > npast:
 
             idx=np.searchsorted(history_time[-npast:],history_time[i]-param["rotT"]/5,side="left")
-            state[2] = history_coeff[-npast+idx, 1] #add Cr(t-T/5)
-        
+            sstate[2] = history_coeff[-npast+idx, 1] #add Cr(t-T/5)
+        state[:]=sstate
         i += 1 #update counter   
-            
+        # print(i,flush=True)
+    print("stop reading",flush=True)
+    reading_bool.value=False
     #----------END READ STATE----------------------------------------
     
     #------------STOP MOTORS-----------------------------------------
