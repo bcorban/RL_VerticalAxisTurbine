@@ -4,7 +4,8 @@ import os
 import random
 import time
 from distutils.util import strtobool
-
+import gclib
+from setup_galil import setup_g
 import gym
 import numpy as np
 import torch
@@ -42,7 +43,7 @@ def parse_args():
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=400,
+    parser.add_argument("--total-timesteps", type=int, default=1000,
         help="total timesteps of the experiments")
     parser.add_argument("--buffer-size", type=int, default=int(1e6),
         help="the replay memory buffer size")
@@ -149,7 +150,21 @@ class Actor(nn.Module):
         return action, log_prob, mean
 
 
-def clean_RLloop():
+if __name__ == '__main__':
+# -----------------Connect to galil and set parameters ----------------------
+
+    
+    import getpass
+    user=getpass.getuser()
+    g = gclib.py()
+    if user=='PIVUSER':
+        g.GOpen("192.168.255.200 --direct -s ALL")
+
+    elif user == 'adminit':
+        g.GOpen("192.168.255.25 --direct -s ALL")
+        
+
+    setup_g(g)  
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
@@ -364,5 +379,4 @@ def clean_RLloop():
     print("SPS")
     print(SPS_list)
 
-if __name__ == "__main__":
-    clean_RLloop()
+    g.GClose()

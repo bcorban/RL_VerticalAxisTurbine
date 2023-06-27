@@ -34,12 +34,12 @@ if __name__ == '__main__':
     p.start()
     while num.value<10000:
         if num.value%100==0 and num.value>0:
-            m=num.value
+            m=np.array(l)
             t_1=time.time()
             # g.GCommand(f"PAF={0}")
             # print(f"action takes {time.time()-t_1}")
             # print(f"pitch {(m,num.value)}")
-            print(f"{l}",flush=True)
+            print(f"{m}",flush=True)
 
     p.join()
 

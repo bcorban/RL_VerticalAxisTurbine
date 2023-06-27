@@ -85,7 +85,7 @@ class CustomEnv(gym.Env):
         t_action=time.time()
         
         g.GCommand(f"PAF={int(self.action_abs*m[1]['ms'])}")
-
+        
         # next_state=self.state
         # next_state=np.array(next_state)
         next_state=np.zeros(3)
@@ -130,26 +130,28 @@ class CustomEnv(gym.Env):
                 self.j+=1
                 
                 
-        # elif user == 'adminit':
+        elif user == 'adminit':
 
-        #     if self.j<10: #if during transients effects, do not save samples
-        #         print("transient")
-        #         self.reward = 0
-        #         info = {"transient": True}
-        #         self.j+=1
-        #     else:
-        #         if overshoot:
-        #             self.reward=-1
-        #         else:
-        #             self.reward = (next_state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
-        #         info = {"transient": False}
-        #         self.history_states[self.j] = next_state 
-        #         self.history_action[self.j] = action
-        #         self.history_action_abs[self.j]=self.action_abs
-        #         self.history_reward[self.j] = self.reward
-        #         self.history_timestamp_actions[self.j]=self.history_time[index]
-        #         self.j+=1
-        #--------------------------------------------------------------
+            if self.j<10: #if during transients effects, do not save samples
+                print("transient")
+                self.reward = 0
+                info = {"transient": True}
+                self.j+=1
+            else:
+                if overshoot:
+                    self.reward=-1
+                else:
+                    self.reward = (next_state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
+                info = {"transient": False}
+                
+                self.history_states[self.j] = next_state 
+                self.history_action[self.j] = action
+                self.history_action_abs[self.j]=self.action_abs
+                self.history_reward[self.j] = self.reward
+                self.history_timestamp_actions[self.j]=t_action
+                self.j+=1
+
+        # --------------------------------------------------------------
         
         # Check if episode terminated ---------------------------------
         if user=='PIVUSER':
@@ -157,21 +159,21 @@ class CustomEnv(gym.Env):
             if self.nrot.value >= self.N_max: 
                 print("terminated")
                 self.terminated.value = True
-                self.pitch(0)  # pitch back to 0 at the end of an episode
+                g.GCommand(f"PAF=0")  # pitch back to 0 at the end of an episode
             else:
                 self.terminated.value = False
         elif user == 'adminit':
             if self.j>100: 
                 print("terminated")
                 self.terminated.value = True
-                self.pitch(0)  # pitch back to 0 at the end of an episode
+                g.GCommand(f"PAF=0") # pitch back to 0 at the end of an episode
             else:
                 self.terminated.value = False
         truncated = False
         # print(f"\n one step takes {time.time()-t_1}s \n")
         # Return step information
-        
-        return next_state, self.reward, self.terminated, info
+
+        return next_state, self.reward, self.terminated.value, info
 
     def reset(self,
         *,
@@ -181,13 +183,7 @@ class CustomEnv(gym.Env):
         self.episode_counter += 1
         
         self.j = 0 #action counter
-        self.reading_bool=Value(c_bool,False)
-        self.terminated=Value(c_bool,False)
-        self.pitch_is=Value('d',0)
-        self.nrot=Value('i',0)
-        manager=Manager()
-        self.state=manager.list()
-        self.state[:]=[0,0,0]
+        
         if self.episode_counter > 1:  # if not first episode
             print("reset")
             if user =='PIVUSER':
@@ -195,6 +191,21 @@ class CustomEnv(gym.Env):
             
             self.process.join()
             self.save_data() #save data from previous ep
+            
+            self.history_states=np.zeros((100000,3))
+            self.history_action=np.zeros(100000)
+            self.history_action_abs=np.zeros(100000)
+            self.history_reward=np.zeros(100000)
+            self.history_timestamp_actions=np.zeros(100000)
+            
+            self.reading_bool=Value(c_bool,False)
+            self.terminated=Value(c_bool,False)
+            self.pitch_is=Value('d',0)
+            self.nrot=Value('i',0)
+            manager=Manager()
+            self.state=manager.list()
+            self.state[:]=[0,0,0]
+            
             self.process=Process(target=continuously_read,args=(self.terminated,self.state,self.nrot,self.pitch_is,self.reading_bool))
             
             if user =='PIVUSER':
@@ -208,6 +219,19 @@ class CustomEnv(gym.Env):
                 
         else: # first episode : start load cell, get offset, start motor
             print("first episode")
+            
+            self.history_states=np.zeros((100000,3))
+            self.history_action=np.zeros(100000)
+            self.history_action_abs=np.zeros(100000)
+            self.history_reward=np.zeros(100000)
+            self.history_timestamp_actions=np.zeros(100000)
+            self.reading_bool=Value(c_bool,False)
+            self.terminated=Value(c_bool,False)
+            self.pitch_is=Value('d',0)
+            self.nrot=Value('i',0)
+            manager=Manager()
+            self.state=manager.list()
+            self.state[:]=[0,0,0]
             self.process=Process(target=continuously_read,args=(self.terminated,self.state,self.nrot,self.pitch_is,self.reading_bool))
 
             if user =='PIVUSER':
@@ -287,7 +311,8 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
     
     g = gclib.py()
     c = g.GCommand
-    g.GOpen("192.168.255.200 --direct -s ALL") #connect galil
+    # g.GOpen("192.168.255.200 --direct -s ALL") #connect galil
+    g.GOpen("192.168.255.25 --direct -s ALL")
     #-------------------------HOMING-----------------------------------------
     print("homing...")
     # eng.my_quick_home(nargout=0)
@@ -308,13 +333,13 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
     
     #-------START MOTOR------------------------------------------------------
     t_start=time.time()
-    g.GCommand("SHE")
-    g.GCommand(f"JGE={int(param['JG'])}")
-    g.GCommand("BGE")
+    # g.GCommand("SHE")
+    # g.GCommand(f"JGE={int(param['JG'])}")
+    # g.GCommand("BGE")
 
     # initialize position tracking
-    g.GCommand("SHF")
-    g.GCommand("PTF=1")
+    # g.GCommand("SHF")
+    # g.GCommand("PTF=1")
     #--------------------Wait for 3 rotations--------------------------------
     # while float(g.GCommand("MG _TPE"))/m[0]["es"] // 360 <3:
     #     time.sleep(0.001)
