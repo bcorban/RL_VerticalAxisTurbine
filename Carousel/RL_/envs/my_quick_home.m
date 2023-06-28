@@ -1,7 +1,7 @@
 g = ConnectGalil('192.168.255.200');
 % HOMING 
-load('motor_offset','offset'); %obtained where?
-load('param','param');
+load('motor_offset','offset'); 
+load('/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/param.mat','param');
 m=param.m;
 pos = [0 0 0]; % Position relative to reference position [deg]
 disp('Homing the motors')

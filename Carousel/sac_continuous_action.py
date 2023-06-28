@@ -1,4 +1,6 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/sac/#sac_continuous_actionpy
+import warnings
+warnings.filterwarnings("ignore")
 import argparse
 import os
 import random
@@ -43,7 +45,7 @@ def parse_args():
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=1000,
+    parser.add_argument("--total-timesteps", type=int, default=1500,
         help="total timesteps of the experiments")
     parser.add_argument("--buffer-size", type=int, default=int(1e6),
         help="the replay memory buffer size")
@@ -53,7 +55,7 @@ def parse_args():
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=512,
         help="the batch size of sample from the reply memory")
-    parser.add_argument("--learning-starts", type=int, default=20, #TO CHANGE (was 5e3) !!!
+    parser.add_argument("--learning-starts", type=int, default=1000, #TO CHANGE (was 5e3) !!!
         help="timestep to start learning")
     parser.add_argument("--policy-lr", type=float, default=3e-4,
         help="the learning rate of the policy network optimizer")
@@ -164,7 +166,8 @@ if __name__ == '__main__':
         g.GOpen("192.168.255.25 --direct -s ALL")
         
 
-    setup_g(g)  
+    setup_g(g)
+
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
@@ -179,7 +182,12 @@ if __name__ == '__main__':
             monitor_gym=True,
             save_code=True,
         )
-    writer = SummaryWriter(f"runs/{run_name}")
+    
+    if args.track:
+        writer = SummaryWriter(f"{wandb.run.dir}")
+    else: 
+        writer = SummaryWriter(f"runs/{run_name}")
+
     writer.add_text(
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
@@ -246,7 +254,7 @@ if __name__ == '__main__':
     SPS_list=[]
 
     for global_step in range(args.total_timesteps):
-        
+        print(global_step)
         #ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
@@ -361,11 +369,16 @@ if __name__ == '__main__':
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
                 
                 
-            # if update % CHECKPOINT_FREQUENCY == 0:
-            #     torch.save(actor.state_dict(), f"{wandb.run.dir}/actor.pt")
-            #     wandb.save(f"{wandb.run.dir}/actor.pt", policy="now")
+            if update % CHECKPOINT_FREQUENCY == 0 and args.track:
+                torch.save(actor.state_dict(), f"{wandb.run.dir}/actor.pt")
+                wandb.save(f"{wandb.run.dir}/actor.pt", policy="now", base_path=f"{wandb.run.dir}")
             
             # time_total.append(time.time()-t_1)
+        else:
+            time.sleep(0.01)
+            if global_step % 100== 0:
+                print("SPS:", int(100 / (time.time() - SPS_time)))
+                SPS_time=time.time()
 
     print("SPS")
     print( int(global_step / (time.time() - start_time)))

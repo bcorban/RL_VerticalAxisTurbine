@@ -43,10 +43,7 @@ param.rotT = 1 / param.rotf; % Rotation period in second
 % ------------------
 
 % Define initial and total number of rotations
-% param.n_rot_act = 30; % Number of actuated rotations
 
-% Recover the corresponding times
-% param.T_act = param.n_rot_act / param.rotf;
 
 % Recover corresponding number of encoder steps
 % param.n_steps_act = param.n_rot_act * 360 * m(1).ms;

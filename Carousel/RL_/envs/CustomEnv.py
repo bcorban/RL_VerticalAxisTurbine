@@ -72,6 +72,7 @@ class CustomEnv(gym.Env):
 
         overshoot=False
         self.action_abs=self.pitch_is.value+action #in degrees
+        # self.action_abs=0
 
         
         if self.action_abs>30:
@@ -86,34 +87,21 @@ class CustomEnv(gym.Env):
         
         g.GCommand(f"PAF={int(self.action_abs*m[1]['ms'])}")
         
-        next_state=self.state
-        next_state=np.array(next_state)
+        next_state=np.array(self.state)
 
         # Compute reward ---------------------------------------------
         if user=='PIVUSER':
                         
-            # if self.nrot.value <= self.N_transient_effects + self.n_rot_ini: #if during transients effects, do not save samples
+            if self.nrot.value <= self.N_transient_effects + 3: #if during transients effects, do not save samples
+                # print("transient")
+                self.reward = 0
+                info = {"transient": True}
+
+            # if self.j<10: #if during transients effects, do not save samples
             #     print("transient")
             #     self.reward = 0
             #     info = {"transient": True}
-            # else:
-            #     if overshoot:
-            #             self.reward=-1 #penalize if going over 30
-            #         else:
-            #             self.reward = (next_state[1] + 2) / 4  # transformation to keep reward roughly between 0 and 1
-            #         info = {"transient": False}
-            #         self.history_states[self.j] = next_state 
-            #         self.history_action[self.j] = action
-            #         self.history_action_abs[self.j]=self.action_abs
-            #         self.history_reward[self.j] = self.reward
-            #         self.history_timestamp_actions[self.j]=self.history_time[index]
-            #         self.j+=1
-
-            if self.j<10: #if during transients effects, do not save samples
-                print("transient")
-                self.reward = 0
-                info = {"transient": True}
-                self.j+=1
+            #     self.j+=1
             else:
                 if overshoot:
                     self.reward=-1
@@ -282,12 +270,14 @@ class CustomEnv(gym.Env):
             
     def close(self): #close galil connection when closing environment
         print("Closing environment")
-        self.terminated=True
+        
+        self.terminated.value=True
+        self.process.join()
         if user =='PIVUSER':
             eng.stop_lc(nargout=0) #stop loadcell
-        self.process.join()
-        g.GClose()
         self.save_data()
+        g.GClose()
+        
         
 def continuously_read(terminated,state,rot_number,pitch_is,reading_bool,episode_counter):
     
@@ -297,7 +287,7 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool,episode_
     
     history_phase = np.zeros(N)
     history_phase_cont = np.zeros(N)
-    history_pitch_should = np.zeros(N)
+    history_pitch_done = np.zeros(N)
     history_pitch_is = np.zeros(N)
     history_volts = np.zeros((N, 5))
     history_volts_raw = np.zeros((N, 5))
@@ -316,11 +306,15 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool,episode_
     #-------------------------HOMING-----------------------------------------
     print("homing...")    
     g.GCommand("OEF=0")
-    # eng.my_quick_home(nargout=0)
+
+    path = "/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/RL_/envs"
+    eng.addpath(path, nargout=0)
+    eng.my_quick_home(nargout=0)
     g.GCommand("OEF=2")
     #------------------------------------------------------------------------
     #-------------------------MEASURE OFFSET---------------------------------
-    t_offset_pause = 5
+    print("Offset")
+    t_offset_pause = 1
     tic = time.time()
     k=0  # should be 0
     while time.time() - tic < t_offset_pause:
@@ -330,7 +324,7 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool,episode_
         k += 1
         
 
-    offset = np.mean(history_volts_raw[:k])
+    offset = np.mean(offset_volts[:k], 0)
     #------------------------------------------------------------------------
     
     #-------START MOTOR------------------------------------------------------
@@ -343,17 +337,16 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool,episode_
     g.GCommand("SHF")
     g.GCommand("PTF=1")
     #--------------------Wait for 3 rotations--------------------------------
-    # while float(g.GCommand("MG _TPE"))/m[0]["es"] // 360 <3:
-    #     time.sleep(0.001)
+    while float(g.GCommand("MG _TPE"))/m[0]["es"] // 360 <3:
+        # time.sleep(0.001)
+        pass
     
     #------------------------------------------------------------------------
     print("begin reading")
     reading_bool.value=True
-    t=time.time()
+
     while not terminated.value and i<N:
-        # if i%1000==0 and i>1:
-        #     print(f"Reading freq : {1000/(time.time()-t)}")
-        #     t=time.time()
+
 
         #----------BEGIN READ STATE-----------------------------------------
         
@@ -361,37 +354,40 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool,episode_
 
         #read galil output (volts)
         
-        galil_output = list(map(float,(c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7],_TPE,_TDF,_TPF")).split()))
+        galil_output = np.array(list(map(float,(c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7],_TPE,_TDF,_TPF")).split())))
      
         # get voltages for the loads, and substract measured offset
         volts_raw = galil_output[0:5] 
         volts = -(volts_raw - offset)
-        history_volts_raw[i] = volts_raw  
-        history_volts[i] = volts 
+        history_volts_raw[i, :] = volts_raw  
+        history_volts[i, :] = volts 
 
         #get the phase and pitch of the blade
         history_phase[i] = galil_output[5] /m[0]["es"] % 360  # In degrees
         history_phase_cont[i] = galil_output[5] /m[0]["es"]  # In degrees
-        rot_number.value=int(galil_output[5] /m[0]["es"] // 360) 
-        history_pitch_should[i] = galil_output[6] /m[1]["ms"] # In degrees
+        rot_number.value = int(galil_output[5] /m[0]["es"] // 360) 
+        history_pitch_done[i] = galil_output[6] /m[1]["ms"] # In degrees
         history_pitch_is[i] = galil_output[7] /m[1]["es"]  # In degrees
         pitch_is.value=history_pitch_is[i]
-        ws = 10  # window size for fill outliers and filtering
-
+        ws = 100  # window size for filtering
+        ws_f=10  # window size for filloutliers
         if i > ws:
             
         
             #---------------------FILLOUTLIERS-------------------
-            window =np.array(history_volts[i - ws : i + 1])
-            med = np.median(window,axis=0
-                            )
+            
+            window =history_volts[i - ws_f : i + 1]
+            med = np.median(window,axis=0)
+            
             MAD = 1.4826 * np.median(np.abs(window - np.tile(med,(len(window),1))),axis=0)
 
             mask= np.abs(history_volts[i] - med) >3* MAD
 
-            replace=np.where(mask, med + 3 * MAD * np.sign(
-                    history_volts[i] - med
-                ),history_volts[i])
+            replace=np.where(
+                mask,
+                med + 3 * MAD * np.sign(history_volts[i] - med),
+                history_volts[i]
+                )
             
             history_volts[i]=replace
             flatlined=False
@@ -401,8 +397,8 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool,episode_
                     break
             if flatlined:
                 # print('flatlined')
-                history_volts[i - ws : i + 1,:] = -(
-                    history_volts_raw[i - ws : i + 1,:] - offset
+                history_volts[i - ws_f : i + 1,:] = -(
+                    history_volts_raw[i - ws_f : i + 1,:] - offset
                 )
             #----------------------------------------------------
             
@@ -412,7 +408,10 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool,episode_
             )  # get Fx and Fy from volts using calibration matrix
 
             #filtering step
-            b, a = signal.butter(8, 0.01)  # to be tuned
+            fc = 30
+            order = 2
+            fs = 550
+            b, a = signal.butter(order, fc/(fs/2))  # to be tuned
             history_forces_butter[i - ws : i + 1] = signal.filtfilt(
                 b, a, history_forces_noisy[i - ws : i + 1], padlen=0
             )
@@ -426,7 +425,7 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool,episode_
             #No filtering step
             history_forces_butter[i - ws : i + 1] = history_forces_noisy[i - ws : i + 1]
 
-        history_forces[i] = history_forces_butter[i]
+        history_forces[i,:] = history_forces_butter[i,:]
         history_forces[i, 0] -= param["F0"]  # remove drag offset
         
         Ueff = ( 
@@ -471,7 +470,7 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool,episode_
         state[:2] = history_coeff[i] #update state
         
         #adding Cr with T/5 time delay. Check in the 500 past measures which one was exactly T/5 seconds away.
-        npast = 500
+        npast = 300
         if i > npast:
 
             idx=np.searchsorted(history_time[-npast:],history_time[i]-param["rotT"]/5,side="left")
@@ -496,7 +495,7 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool,episode_
               'phase':history_phase,
               'phase_cont':history_phase_cont,
               'pitch_is':history_pitch_is,
-              'pitch_should':history_pitch_should, 
+              'pitch_should':history_pitch_done, 
               'volts_raw':history_volts_raw, 
               'volts': history_volts, 
               'forces_noisy' : history_forces_noisy, 
