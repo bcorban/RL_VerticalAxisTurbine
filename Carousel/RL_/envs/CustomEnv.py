@@ -65,7 +65,7 @@ class CustomEnv(gym.Env):
         self.N_transient_effects = CONFIG_ENV["N_transient_effects"] #Number of rotations without sampling transitions, at the begining of each episodes
         self.N_max = CONFIG_ENV["N_max"] #max number of steps in an episode
 
-        self.episode_counter = 0
+        self.episode_counter = Value('i',0)
         print("init")
 
     def step(self, action):  #This method performs one step, i.e. one pitching command, and returns the next state and reward
@@ -179,11 +179,11 @@ class CustomEnv(gym.Env):
         seed: Optional[int] = None,
         return_info: bool = False,
         options: Optional[dict] = None): #This method is called at the begining of each episode
-        self.episode_counter += 1
+        self.episode_counter.value += 1
         
         self.j = 0 #action counter
         
-        if self.episode_counter > 1:  # if not first episode
+        if self.episode_counter.value > 1:  # if not first episode
             print("reset")
             if user =='PIVUSER':
                 eng.stop_lc(nargout=0) #stop loadcell
@@ -205,7 +205,7 @@ class CustomEnv(gym.Env):
             self.state=manager.list()
             self.state[:]=[0,0,0]
             
-            self.process=Process(target=continuously_read,args=(self.terminated,self.state,self.nrot,self.pitch_is,self.reading_bool))
+            self.process=Process(target=continuously_read,args=(self.terminated,self.state,self.nrot,self.pitch_is,self.reading_bool,self.episode_counter))
             
             if user =='PIVUSER':
                 try:
@@ -231,7 +231,7 @@ class CustomEnv(gym.Env):
             manager=Manager()
             self.state=manager.list()
             self.state[:]=[0,0,0]
-            self.process=Process(target=continuously_read,args=(self.terminated,self.state,self.nrot,self.pitch_is,self.reading_bool))
+            self.process=Process(target=continuously_read,args=(self.terminated,self.state,self.nrot,self.pitch_is,self.reading_bool,self.episode_counter))
 
             if user =='PIVUSER':
                 try:
@@ -269,15 +269,15 @@ class CustomEnv(gym.Env):
             
     def save_data(self): #export data from an episode into a .mat file
         print("saving data...")
-        # if user=="PIVUSER":
-            # path=f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms002mpt{'{:04}'.format(self.episode_counter)}.mat"
-            # dict={
-            #       'state':self.history_states,
-            #       'action':self.history_action,
-            #       'action_abs':self.history_action_abs,
-            #       'reward':self.history_reward,
-            #       'time_action':self.history_timestamp_actions}
-            # savemat(path,dict
+        if user=="PIVUSER":
+            path=f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms001mpt{'{:03}'.format(self.episode_counter.value)}_2.mat"
+            dict={
+                  'state':self.history_states,
+                  'action':self.history_action,
+                  'action_abs':self.history_action_abs,
+                  'reward':self.history_reward,
+                  'time_action':self.history_timestamp_actions}
+            savemat(path,dict)
 
             
     def close(self): #close galil connection when closing environment
@@ -285,10 +285,11 @@ class CustomEnv(gym.Env):
         self.terminated=True
         if user =='PIVUSER':
             eng.stop_lc(nargout=0) #stop loadcell
+        self.process.join()
         g.GClose()
         self.save_data()
         
-def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
+def continuously_read(terminated,state,rot_number,pitch_is,reading_bool,episode_counter):
     
     N = 1000000
     reading_bool.value=False
@@ -313,8 +314,10 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
     g.GOpen("192.168.255.200 --direct -s ALL") #connect galil
 
     #-------------------------HOMING-----------------------------------------
-    print("homing...")
+    print("homing...")    
+    g.GCommand("OEF=0")
     # eng.my_quick_home(nargout=0)
+    g.GCommand("OEF=2")
     #------------------------------------------------------------------------
     #-------------------------MEASURE OFFSET---------------------------------
     t_offset_pause = 5
@@ -486,23 +489,22 @@ def continuously_read(terminated,state,rot_number,pitch_is,reading_bool):
     #----------------------------------------------------------------
     
     #------------SAVE DATA-------------------------------------------
-    # if user=="PIVUSER":
-        # path=f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms001mpt{'{:04}'.format(episode_counter)}.mat"
-        # dict={'param':param,
-        #       'time':history_time,
-        #       'phase':history_phase,
-        #       'phase_cont':history_phase_cont,
-        #       'pitch_is':history_pitch_is,
-        #       'pitch_should':history_pitch_should, 
-        #       'volts_raw':history_volts_raw, 
-        #       'volts': history_volts, 
-        #       'forces_noisy' : history_forces_noisy, 
-        #       'forces_butter': history_forces_butter,
-        #       'forces':history_forces,
-        #       'coeff':history_coeff, 
-        #       
-        #       }
-        # savemat(path,dict)
+    if user=="PIVUSER":
+        path=f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms001mpt{'{:03}'.format(episode_counter.value)}_1.mat"
+        dict={'param':param,
+              'time':history_time,
+              'phase':history_phase,
+              'phase_cont':history_phase_cont,
+              'pitch_is':history_pitch_is,
+              'pitch_should':history_pitch_should, 
+              'volts_raw':history_volts_raw, 
+              'volts': history_volts, 
+              'forces_noisy' : history_forces_noisy, 
+              'forces_butter': history_forces_butter,
+              'forces':history_forces,
+              'coeff':history_coeff, 
+              }
+        savemat(path,dict)
     #----------------------------------------------------------------
     
 
