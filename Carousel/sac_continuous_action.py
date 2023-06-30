@@ -256,6 +256,8 @@ if __name__ == '__main__':
     for global_step in range(args.total_timesteps):
         print(global_step)
         #ALGO LOGIC: put action logic here
+        
+        obs=np.array(envs[0].state) #Read state before deciding action
         if global_step < args.learning_starts:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:

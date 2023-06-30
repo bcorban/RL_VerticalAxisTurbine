@@ -8,38 +8,35 @@ import matplotlib.pyplot as plt
 import gclib
 from multiprocessing import Process, Value,Manager
 import ctypes
-def f (N,n,l):
+def f (N,t_start):
     print("process starts")
     g = gclib.py()
     c = g.GCommand
     g.GOpen("192.168.255.200 --direct -s ALL")
-    t_1=time.time()
+    tpf=np.zeros(N)
+    t=np.zeros(N)
+    t_start.value=time.time()
     for i in range(N):
         
-        c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7]")
-        print("reading")
-        # n.value=i
-        # l[:]=[i,1,2]
-        if i%100==0 and i>0:
-            print(i/(time.time()-t_1))
-            
+        tpf[i]=float(c("MG _TPF"))/(666.6666)
+        t[i]=time.time()
+    plt.figure()
+    plt.scatter(t_a,6)
+    plt.plot(t,tpf)
+    
 if __name__ == '__main__':
-    # g = gclib.py()
-    # c = g.GCommand
-    # g.GOpen("192.168.255.200 --direct -s ALL")
-    num=Value('i',0)
-    manager=Manager()
-    l=manager.list()
-    p=Process(target=f, args=(10000,num,l))
+    g = gclib.py()
+    c = g.GCommand
+    g.GOpen("192.168.255.200 --direct -s ALL")
+    t_start=Value('d',0)
+    t_a=Value('d',0)
+    p=Process(target=f, args=(1000,t_start))
     p.start()
-    while num.value<10000:
-        if num.value%100==0 and num.value>0:
-            m=np.array(l)
-            t_1=time.time()
-            # g.GCommand(f"PAF={0}")
-            # print(f"action takes {time.time()-t_1}")
-            # print(f"pitch {(m,num.value)}")
-            print(f"{m}",flush=True)
-
+    while p.is_alive:
+        if t_start>0 and time.time-t_start.value>1:
+            c(f"PAF {int(6*213.3333)}")
+            t_a.value=time.time-t_start.value
+            break
+        
     p.join()
 
