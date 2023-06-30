@@ -74,96 +74,39 @@ class CustomEnv(gym.Env):
     def step(
         self, action
     ):  # This method performs one step, i.e. one pitching command, and returns the next state and reward
-        overshoot = False
-        self.action_abs = self.pitch_is.value + action  # in degrees
-        # self.action_abs=0
+        
+        self.overshoot = False
+        # self.action_abs = self.pitch_is.value + action  # in degrees
+        self.action_abs=0
 
         if self.action_abs > 30:
             self.action_abs = 30
-            overshoot = True
+            self.overshoot = True
         elif self.action_abs < -30:
             self.action_abs = -30
-            overshoot = True
+            self.overshoot = True
 
-        t_action = time.time()
+        self.history_action[self.j] = action
+        self.history_action_abs[self.j] = self.action_abs
+        self.history_timestamp_actions[self.j] = time.time() - self.t_start.value
 
         g.GCommand(f"PAF={int(self.action_abs*m[1]['ms'])}")
-        time.sleep()
-        next_state,Cp = np.array(self.state),self.Cp.value
-
-        # Compute reward ---------------------------------------------
-        if user == "PIVUSER":
-            if (
-                self.nrot.value <= self.N_transient_effects + 3
-            ):  # if during transients effects, do not save samples
-                # print("transient")
-                self.reward = 0
+       
+        if self.nrot.value <= self.N_transient_effects + 3:  # if during transients effects, do not save samples
                 info = {"transient": True}
-
-            # if self.j<10: #if during transients effects, do not save samples
-            #     print("transient")
-            #     self.reward = 0
-            #     info = {"transient": True}
-            #     self.j+=1
-            else:
-                if overshoot:
-                    self.reward = -1
-                else:
-                    self.reward = (Cp + 2) / 4  # transformation to keep reward roughly between 0 and 1
-                
-                info = {"transient": False}
-
-                self.history_states[self.j] = next_state
-                self.history_action[self.j] = action
-                self.history_action_abs[self.j] = self.action_abs
-                self.history_reward[self.j] = self.reward
-                self.history_timestamp_actions[self.j] = t_action
-                self.j += 1
-
-        elif user == "adminit":
-            if self.j < 10:  # if during transients effects, do not save samples
-                print("transient")
-                self.reward = 0
-                info = {"transient": True}
-                self.j += 1
-            else:
-                if overshoot:
-                    self.reward = -1
-                else:
-                    self.reward = (
-                        Cp + 2
-                    ) / 4  # transformation to keep reward roughly between 0 and 1
-                info = {"transient": False}
-
-                self.history_states[self.j] = next_state
-                self.history_action[self.j] = action
-                self.history_action_abs[self.j] = self.action_abs
-                self.history_reward[self.j] = self.reward
-                self.history_timestamp_actions[self.j] = t_action
-                self.j += 1
-
-        # --------------------------------------------------------------
+        else:
+            info={"transient": False}
 
         # Check if episode terminated ---------------------------------
-        if user == "PIVUSER":
-            if self.nrot.value >= self.N_max:
-                print("terminated")
-                self.terminated.value = True
-                g.GCommand(f"PAF=0")  # pitch back to 0 at the end of an episode
-            else:
-                self.terminated.value = False
-        elif user == "adminit":
-            if self.j > 100:
-                print("terminated")
-                self.terminated.value = True
-                g.GCommand(f"PAF=0")  # pitch back to 0 at the end of an episode
-            else:
-                self.terminated.value = False
-        truncated = False
-        # print(f"\n one step takes {time.time()-t_1}s \n")
-        # Return step information
+        
+        if self.nrot.value >= self.N_max:
+            print("terminated")
+            self.terminated.value = True
+            g.GCommand(f"PAF=0")  # pitch back to 0 at the end of an episode
+        else:
+            self.terminated.value = False
 
-        return next_state, self.reward, self.terminated.value, info
+        return np.array(self.state), 0, self.terminated.value, info
 
     def reset(
         self,
@@ -173,7 +116,8 @@ class CustomEnv(gym.Env):
         options: Optional[dict] = None,
     ):  # This method is called at the begining of each episode
         self.episode_counter.value += 1
-
+        self.overshoot=False
+        self.t_action=0
         self.j = 0  # action counter
 
         if self.episode_counter.value > 1:  # if not first episode
@@ -194,6 +138,7 @@ class CustomEnv(gym.Env):
             self.terminated = Value(c_bool, False)
             self.pitch_is = Value("d", 0)
             self.nrot = Value("i", 0)
+            self.t_start=Value('d',0)
             manager = Manager()
             self.state = manager.list()
             self.state[:] = [0, 0, 0]
@@ -208,6 +153,7 @@ class CustomEnv(gym.Env):
                     self.pitch_is,
                     self.reading_bool,
                     self.episode_counter,
+                    self.t_start
                 ),
             )
 
@@ -232,6 +178,7 @@ class CustomEnv(gym.Env):
             self.Cp = Value("d", 0)
             self.pitch_is = Value("d", 0)
             self.nrot = Value("i", 0)
+            self.t_start=Value('d',0)
             manager = Manager()
             self.state = manager.list()
             self.state[:] = [0, 0, 0]
@@ -246,6 +193,7 @@ class CustomEnv(gym.Env):
                     self.pitch_is,
                     self.reading_bool,
                     self.episode_counter,
+                    self.t_start
                 ),
             )
 
@@ -296,9 +244,24 @@ class CustomEnv(gym.Env):
         self.save_data()
         g.GClose()
 
+    def get_transition(self):
+
+        next_state, Cp_ = np.array(self.state), self.Cp.value
+        # print(Cp_)
+        if self.overshoot:
+            self.reward = -1
+        else:
+            self.reward = (Cp_ + 2) / 4  # transformation to keep reward roughly between 0 and 1
+        
+        self.history_states[self.j] = next_state
+        self.history_reward[self.j] = self.reward
+        self.j += 1
+
+        return np.array([next_state]),np.array([self.reward]) #return state and reward in a vectorized manner for the RL loop
+        # --------------------------------------------------------------
 
 def continuously_read(
-    terminated, state, Cp, rot_number, pitch_is, reading_bool, episode_counter
+    terminated, state, Cp, rot_number, pitch_is, reading_bool, episode_counter, t_start
 ):
     N = 1000000
     reading_bool.value = False
@@ -345,7 +308,7 @@ def continuously_read(
     # ------------------------------------------------------------------------
     # -------------------------MEASURE OFFSET---------------------------------
     print("Offset")
-    t_offset_pause = 1
+    t_offset_pause = 5
     tic = time.time()
     k = 0  # should be 0
     while time.time() - tic < t_offset_pause:
@@ -358,7 +321,7 @@ def continuously_read(
     # ------------------------------------------------------------------------
 
     # -------START MOTOR------------------------------------------------------
-    t_start = time.time()
+    t_start.value = time.time()
     g.GCommand("SHE")
     g.GCommand(f"JGE={int(param['JG'])}")
     g.GCommand("BGE")
@@ -378,7 +341,7 @@ def continuously_read(
     while not terminated.value and i < N:  # while episode not ended and lists not full
         # ----------BEGIN READ STATE-----------------------------------------
 
-        history_time[i] = time.time() - t_start  # get time
+        history_time[i] = time.time() - t_start.value  # get time
 
         # read galil output (volts)
 
@@ -404,9 +367,9 @@ def continuously_read(
         history_pitch_done[i] = galil_output[6] / m[1]["ms"]  # In degrees
         history_pitch_is[i] = galil_output[7] / m[1]["es"]  # In degrees
         pitch_is.value = history_pitch_is[i]
-        if i > 1:
-            history_dpitch_noisy[i] = history_pitch_is[i] - history_pitch_is[i - 1]
-
+        if i > 2:
+            # history_dpitch_noisy[i] = (history_pitch_is[i] - history_pitch_is[i-1]) / (history_time[i]-history_time[i-1])
+            history_dpitch_noisy[i] = np.gradient(history_pitch_is[i-2:i+1], history_time[i-2:i+1],edge_order=2)[-1]
         ws = 100  # window size for filtering
         ws_f = 10  # window size for filloutliers
 
@@ -441,24 +404,22 @@ def continuously_read(
             # ----------------------------------------------------
 
             history_forces_noisy[i] = np.dot(
-                np.array(history_volts[i]), param["R4"][:, [0, 1, 4]]
+                np.array(history_volts[i]), param["R4"]
             )  # get Fx,Fy and Mz from volts using calibration matrix
 
             # filtering step for forces
-
             history_forces_butter[i - ws : i + 1] = signal.filtfilt(
                 b, a, history_forces_noisy[i - ws : i + 1], padlen=0
             )
 
             # filtering step for dpitch
-
             history_dpitch_filtered[i - ws : i + 1] = signal.filtfilt(
                 b_p, a_p, history_dpitch_noisy[i - ws : i + 1], padlen=0
             )
 
         else:  # No filtering or filloutliers step
             history_forces_noisy[i] = np.dot(
-                np.array(history_volts[i]), param["R4"][:, [0, 1, 4]]
+                np.array(history_volts[i]), param["R4"]
             )  # get Fx,Fy and Mz from volts using calibration matrix
 
             history_forces_butter[i - ws : i + 1] = history_forces_noisy[i - ws : i + 1]
@@ -495,12 +456,20 @@ def continuously_read(
         )
         # Compute Cp for reward
         
-        Pgen = (Ft*param['R']*param['rotf']*2*math.pi) #generated power
-        Pmot = abs(history_forces[i,2]*history_dpitch_filtered[i])
-        Pflow = 0.5*param['rho']*param['Uinf']**3*param['span']*param['R']*2
+        Pgen = (Ft*param['R']*param['rotf']*2*math.pi) # generated power
+        if math.isnan(Pgen):
+            print("Pgen",flush=True)
+        # Pmot = abs(history_forces[i,2]*history_dpitch_filtered[i]) # Mz * omega_F 
+        Pmot=0
+        if math.isnan(Pmot):
+            print("Pmot",flush=True)
+        Pflow = 0.5*param['rho']*param['Uinf']**3*param['span']*param['R']*2 
+        if math.isnan(Pflow):
+            print("Pflow",flush=True)
         history_Cp[i]=(Pgen-Pmot)/Pflow
         Cp.value=history_Cp[i]
-        
+        if math.isnan(Cp.value):
+            print("Cp",flush=True)
         
         history_coeff[i, 0] = Ft / param["f_denom"]  # compute Ct
 

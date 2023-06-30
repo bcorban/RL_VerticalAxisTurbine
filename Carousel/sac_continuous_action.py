@@ -231,7 +231,7 @@ if __name__ == '__main__':
 
     envs.single_observation_space.dtype = np.float32
     
-    rb = SB3_CustomReplayBuffer(
+    rb = ReplayBuffer(
         args.buffer_size,
         envs.single_observation_space,
         envs.single_action_space,
@@ -254,10 +254,10 @@ if __name__ == '__main__':
     SPS_list=[]
 
     for global_step in range(args.total_timesteps):
-        print(global_step)
+        # print(global_step)
         #ALGO LOGIC: put action logic here
         
-        obs=np.array(envs[0].state) #Read state before deciding action
+        obs=np.array([envs.envs[0].state]) #Read state before deciding action
         if global_step < args.learning_starts:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
@@ -266,40 +266,41 @@ if __name__ == '__main__':
 
         # TRY NOT TO MODIFY: execute the game and log data.
         t_1=time.time()
-        next_obs, rewards, dones, infos = envs.step(actions)
-        # print(f"step : {time.time()-t_1}")
-        # TRY NOT TO MODIFY: record rewards for plotting purposes
-        mean_r+=rewards[0]
-        mean_cp+=rewards[0]*4-2
+        _, _, dones, infos = envs.step(actions)
 
-        if global_step%50==0:
-            writer.add_scalar("charts/mean_reward_last_50", mean_r/50, global_step)
-            writer.add_scalar("charts/mean_cp_last_50", mean_cp/50, global_step)
-            mean_r=0
-            mean_cp=0
+        # # TRY NOT TO MODIFY: record rewards for plotting purposes
+        # mean_r+=rewards[0]
+        # mean_cp+=rewards[0]*4-2
 
-        for info in infos:
+        # if global_step%50==0:
+        #     writer.add_scalar("charts/mean_reward_last_50", mean_r/50, global_step)
+        #     writer.add_scalar("charts/mean_cp_last_50", mean_cp/50, global_step)
+        #     mean_r=0
+        #     mean_cp=0
+
+        # for info in infos:
             
-            if "episode" in info.keys():
-                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                break
+        #     if "episode" in info.keys():
+        #         print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+        #         writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+        #         writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+        #         break
         
-        # TRY NOT TO MODIFY: save data to replay buffer; handle `terminal_observation`
-        real_next_obs = next_obs.copy()
-        for idx, d in enumerate(dones):
-            if d:
-                real_next_obs[idx] = infos[idx]["terminal_observation"]
-        rb.add(obs, real_next_obs, actions, rewards, dones, infos)
+        # # TRY NOT TO MODIFY: save data to replay buffer; handle `terminal_observation`
+        # real_next_obs = next_obs.copy()
+        # for idx, d in enumerate(dones):
+        #     if d:
+        #         real_next_obs[idx] = infos[idx]["terminal_observation"]
+        # # rb.add(obs, real_next_obs, actions, rewards, dones, infos)
 
-        # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
-        obs = next_obs
+        # # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
+        # obs = next_obs
         
-        # ALGO LOGIC: training.
+        # ALGO LOGIC: training loop begin--------------------------------------------------
         if global_step > args.learning_starts:
-            # t_3=time.time()
+
             data = rb.sample(args.batch_size)
+            # print(data.observations)
             with torch.no_grad():
                 next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
                 qf1_next_target = qf1_target(data.next_observations, next_state_actions)
@@ -322,7 +323,7 @@ if __name__ == '__main__':
                     args.policy_frequency
                 ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
                     update+=1
-                    # print("update")
+                    print("update")
                     
                     pi, log_pi, _ = actor.get_action(data.observations)
                     qf1_pi = qf1(data.observations, pi)
@@ -354,7 +355,7 @@ if __name__ == '__main__':
             # print(f"\n updating policy takes {time.time()-t_3}s\n")
             # time_2.append(time.time()-t_3)
             
-            if global_step % 100== 0:
+            if global_step % 100== 0 and global_step>0:
                 writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
                 writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
                 writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
@@ -377,10 +378,48 @@ if __name__ == '__main__':
             
             # time_total.append(time.time()-t_1)
         else:
-            time.sleep(0.01)
+            time.sleep(0.013)
             if global_step % 100== 0:
                 print("SPS:", int(100 / (time.time() - SPS_time)))
                 SPS_time=time.time()
+        
+        #-------------------Training loop end------------------------------------
+        
+        #-------------read new state from previous action and record transition---------------
+        next_obs,rewards=envs.envs[0].get_transition() #gets state and reward with a delay due to RL loop to ensure that the motor has reached the desired position
+
+        # TRY NOT TO MODIFY: record rewards for plotting purposes
+        mean_r+=rewards[0]
+        mean_cp+=rewards[0]*4+2
+
+        if global_step%50==0:
+            writer.add_scalar("charts/mean_reward_last_50", mean_r/50, global_step)
+            writer.add_scalar("charts/mean_cp_last_50", mean_cp/50, global_step)
+            mean_r=0
+            mean_cp=0
+
+        for info in infos:
+            
+            if "episode" in info.keys():
+                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                break
+        
+        # TRY NOT TO MODIFY: save data to replay buffer; handle `terminal_observation`
+        real_next_obs = next_obs.copy()
+        for idx, d in enumerate(dones):
+            if d:
+                real_next_obs[idx] = infos[idx]["terminal_observation"]
+
+        if not dones[0] and not infos[0]['transient']: #if episode not terminated and not in transient rotations add to replay buffer 
+            # print("add")
+            rb.add(obs, real_next_obs, actions, rewards, dones, infos)
+
+        # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
+        obs = next_obs
+
+
 
     print("SPS")
     print( int(global_step / (time.time() - start_time)))
@@ -393,6 +432,6 @@ if __name__ == '__main__':
     # print("Mean time for whole loop")
     # print(np.mean(np.array(time_total)))
     # print("SPS")
-    # print(SPS_list)
+    # print(SPS_list) 
 
     g.GClose()
