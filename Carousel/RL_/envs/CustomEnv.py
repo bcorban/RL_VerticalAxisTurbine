@@ -21,6 +21,7 @@ import ray
 import threading
 from multiprocessing import Process, Value, Manager
 from ctypes import c_bool
+import win_precise_time as wpt
 
 user = getpass.getuser()
 if user == "PIVUSER":
@@ -88,7 +89,7 @@ class CustomEnv(gym.Env):
 
         self.history_action[self.j] = action
         self.history_action_abs[self.j] = self.action_abs
-        self.history_timestamp_actions[self.j] = time.time() - self.t_start.value
+        self.history_timestamp_actions[self.j] = wpt.time() - self.t_start.value
 
         g.GCommand(f"PAF={int(self.action_abs*m[1]['ms'])}")
        
@@ -226,11 +227,11 @@ class CustomEnv(gym.Env):
         if user == "PIVUSER":
             path = f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms001mpt{'{:03}'.format(self.episode_counter.value)}_2.mat"
             dict = {
-                "state": self.history_states,
-                "action": self.history_action,
-                "action_abs": self.history_action_abs,
-                "reward": self.history_reward,
-                "time_action": self.history_timestamp_actions,
+                "state": self.history_states[:self.j],
+                "action": self.history_action[:self.j],
+                "action_abs": self.history_action_abs[:self.j],
+                "reward": self.history_reward[:self.j],
+                "time_action": self.history_timestamp_actions[:self.j],
             }
             savemat(path, dict)
 
@@ -305,13 +306,14 @@ def continuously_read(
     eng.addpath(path, nargout=0)
     eng.my_quick_home(nargout=0)
     g.GCommand("OEF=2")
+    g.GCommand("DEF=0")  # force encoder signal to 0 after homing 
     # ------------------------------------------------------------------------
     # -------------------------MEASURE OFFSET---------------------------------
     print("Offset")
     t_offset_pause = 5
-    tic = time.time()
+    tic = wpt.time()
     k = 0  # should be 0
-    while time.time() - tic < t_offset_pause:
+    while wpt.time() - tic < t_offset_pause:
         offset_volts[k] = list(
             map(float, (c("MG @AN[1],@AN[2],@AN[3],@AN[5],@AN[7]")).split())
         )
@@ -320,8 +322,8 @@ def continuously_read(
     offset = np.mean(offset_volts[:k], 0)
     # ------------------------------------------------------------------------
 
-    # -------START MOTOR------------------------------------------------------
-    t_start.value = time.time()
+    # ----------------------------START MOTOR---------------------------------
+    t_start.value = wpt.time()
     g.GCommand("SHE")
     g.GCommand(f"JGE={int(param['JG'])}")
     g.GCommand("BGE")
@@ -341,7 +343,7 @@ def continuously_read(
     while not terminated.value and i < N:  # while episode not ended and lists not full
         # ----------BEGIN READ STATE-----------------------------------------
 
-        history_time[i] = time.time() - t_start.value  # get time
+        history_time[i] = wpt.time() - t_start.value  # get time
 
         # read galil output (volts)
 
@@ -371,7 +373,7 @@ def continuously_read(
             # history_dpitch_noisy[i] = (history_pitch_is[i] - history_pitch_is[i-1]) / (history_time[i]-history_time[i-1])
             history_dpitch_noisy[i] = np.gradient(history_pitch_is[i-2:i+1], history_time[i-2:i+1],edge_order=2)[-1]
         ws = 100  # window size for filtering
-        ws_f = 10  # window size for filloutliers
+        ws_f = 10 # window size for filloutliers
 
         if i > ws:
             # ---------------------FILLOUTLIERS-------------------
@@ -388,19 +390,19 @@ def continuously_read(
             replace = np.where(
                 mask, med + 3 * MAD * np.sign(history_volts[i] - med), history_volts[i]
             )
+            # replace = np.where(
+            #     mask, med, history_volts[i]
+            # )
+
 
             history_volts[i] = replace
             
             flatlined = False
             
             for l in range(5): #check if any of the volts channels flatlined
-                if np.all(window[:, l] == med[l] * np.ones(len(window))):
-                    flatlined = True
-                    break
-            if flatlined:
-                history_volts[i - ws_f : i + 1, :] = -(
-                    history_volts_raw[i - ws_f : i + 1, :] - offset
-                )
+                if np.all(history_volts[i - ws_f : i + 1, l]== med[l] ):
+                    history_volts[i - ws_f : i + 1, l] = -(history_volts_raw[i - ws_f : i + 1, l] - offset[l])
+   
             # ----------------------------------------------------
 
             history_forces_noisy[i] = np.dot(
@@ -409,7 +411,7 @@ def continuously_read(
 
             # filtering step for forces
             history_forces_butter[i - ws : i + 1] = signal.filtfilt(
-                b, a, history_forces_noisy[i - ws : i + 1], padlen=0
+                b, a, history_forces_noisy[i - ws : i + 1], axis=0,padlen=0
             )
 
             # filtering step for dpitch
@@ -457,15 +459,15 @@ def continuously_read(
         # Compute Cp for reward
         
         Pgen = (Ft*param['R']*param['rotf']*2*math.pi) # generated power
-        if math.isnan(Pgen):
-            print("Pgen",flush=True)
-        # Pmot = abs(history_forces[i,2]*history_dpitch_filtered[i]) # Mz * omega_F 
-        Pmot=0
+
+        Pmot = abs(history_forces[i,2]*history_dpitch_filtered[i]) # Mz * omega_F 
+        # Pmot=0
         if math.isnan(Pmot):
-            print("Pmot",flush=True)
+            print('nan')
+            Pmot=0
+
         Pflow = 0.5*param['rho']*param['Uinf']**3*param['span']*param['R']*2 
-        if math.isnan(Pflow):
-            print("Pflow",flush=True)
+
         history_Cp[i]=(Pgen-Pmot)/Pflow
         Cp.value=history_Cp[i]
         if math.isnan(Cp.value):
@@ -505,17 +507,21 @@ def continuously_read(
         path = f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms001mpt{'{:03}'.format(episode_counter.value)}_1.mat"
         dict = {
             "param": param,
-            "time": history_time,
-            "phase": history_phase,
-            "phase_cont": history_phase_cont,
-            "pitch_is": history_pitch_is,
-            "pitch_should": history_pitch_done,
-            "volts_raw": history_volts_raw,
-            "volts": history_volts,
-            "forces_noisy": history_forces_noisy,
-            "forces_butter": history_forces_butter,
-            "forces": history_forces,
-            "coeff": history_coeff,
+            "t_g": history_time[:i-1],
+            "phase": history_phase[:i-1],
+            "phase_cont": history_phase_cont[:i-1],
+            "pitch_is": history_pitch_is[:i-1],
+            "pitch_should": history_pitch_done[:i-1],
+            "volts_raw_g": history_volts_raw[:i-1],
+            "volts_g": history_volts[:i-1],
+            "forces_noisy_g": history_forces_noisy[:i-1],
+            "forces_butter_g": history_forces_butter[:i-1],
+            "forces_g": history_forces[:i-1],
+            "force_coeff_g": history_coeff[:i-1],
+            "v_offset_g": offset,
+            "dpitch_noisy" : history_dpitch_noisy[:i-1],
+            "dpitch_filtered" : history_dpitch_filtered[:i-1],
+            "Cp" : history_Cp[:i-1]
         }
         savemat(path, dict)
     # ----------------------------------------------------------------

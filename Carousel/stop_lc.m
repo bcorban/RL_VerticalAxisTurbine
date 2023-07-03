@@ -1,6 +1,6 @@
 lc.stopLC()
-volts = lc.data;
-t = lc.time;
+volts_ni = lc.data;
+t_ni = lc.time;
 
 file_folder = 'C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc001\raw\20230628';
 ms = 1;
@@ -14,4 +14,4 @@ if exist(file_folder,'dir') == 0
     mkdir(file_folder)
 end
 % Save into a .mat file
-save(file_path, 'volts', 't');
+save(file_path, 'volts_ni', 't_ni');

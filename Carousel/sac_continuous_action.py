@@ -45,7 +45,7 @@ def parse_args():
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=1500,
+    parser.add_argument("--total-timesteps", type=int, default=700,
         help="total timesteps of the experiments")
     parser.add_argument("--buffer-size", type=int, default=int(1e6),
         help="the replay memory buffer size")
@@ -55,7 +55,7 @@ def parse_args():
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=512,
         help="the batch size of sample from the reply memory")
-    parser.add_argument("--learning-starts", type=int, default=1000, #TO CHANGE (was 5e3) !!!
+    parser.add_argument("--learning-starts", type=int, default=600, #TO CHANGE (was 5e3) !!!
         help="timestep to start learning")
     parser.add_argument("--policy-lr", type=float, default=3e-4,
         help="the learning rate of the policy network optimizer")
@@ -323,7 +323,7 @@ if __name__ == '__main__':
                     args.policy_frequency
                 ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
                     update+=1
-                    print("update")
+                    # print("update")
                     
                     pi, log_pi, _ = actor.get_action(data.observations)
                     qf1_pi = qf1(data.observations, pi)
