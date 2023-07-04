@@ -279,6 +279,7 @@ def continuously_read(
     history_volts_raw = np.zeros((N, 5))
     history_time = np.zeros(N)
     history_forces_noisy = np.zeros((N, 3))
+    history_forces_noisy_= np.zeros((N, 3))
     history_forces_butter = np.zeros((N, 3))
     history_forces = np.zeros((N, 3))
     history_coeff = np.zeros((N, 2))
@@ -385,10 +386,10 @@ def continuously_read(
                 np.abs(window - np.tile(med, (len(window), 1))), axis=0
             )  # inspired from matlab filloutliers method
 
-            mask = np.abs(history_volts[i] - med) > 3 * MAD
+            mask = np.abs(history_volts[i] - med) > 2 * MAD
 
             replace = np.where(
-                mask, med + 3 * MAD * np.sign(history_volts[i] - med), history_volts[i]
+                mask, med + 2 * MAD * np.sign(history_volts[i] - med), history_volts[i]
             )
             # replace = np.where(
             #     mask, med, history_volts[i]
@@ -409,9 +410,36 @@ def continuously_read(
                 np.array(history_volts[i]), param["R4"]
             )  # get Fx,Fy and Mz from volts using calibration matrix
 
+            window_= history_forces_noisy[i - ws_f : i + 1]
+            med_ = np.median(window_, axis=0)
+
+            # MAD = 1.4826 * np.median(
+            MAD_ = 1.4826 * np.median(
+                np.abs(window_ - med_), axis=0
+            )  # inspired from matlab filloutliers method
+
+            mask_ = np.abs(history_forces_noisy[i] - med_) > 1.5* MAD_
+
+            replace_ = np.where(
+                mask_, med_ + 0* MAD_ * np.sign(history_forces_noisy[i] - med_), history_forces_noisy[i]
+            )
+            history_forces_noisy_[i] = replace_
+
+            
+
+
+            for l in range(3): #check if any of the volts channels flatlined
+                if np.all(history_forces_noisy_[i - ws_f : i + 1, l] == med[l]):
+
+                    history_forces_noisy_[i - ws_f : i + 1, l] = history_forces_noisy[i - ws_f : i + 1, l]
+                    # print(f'flatlined {l}',flush=True)
+                    # i_list.append(i)
+
+
+
             # filtering step for forces
             history_forces_butter[i - ws : i + 1] = signal.filtfilt(
-                b, a, history_forces_noisy[i - ws : i + 1], axis=0,padlen=0
+                b, a, history_forces_noisy_[i - ws : i + 1], axis=0,padlen=0
             )
 
             # filtering step for dpitch
@@ -525,5 +553,5 @@ def continuously_read(
         }
         savemat(path, dict)
     # ----------------------------------------------------------------
-
+    
     print("Process_ending")

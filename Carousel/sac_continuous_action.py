@@ -265,7 +265,7 @@ if __name__ == '__main__':
             actions = actions.detach().cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        t_1=time.time()
+        # t_1=time.time()
         _, _, dones, infos = envs.step(actions)
 
         # # TRY NOT TO MODIFY: record rewards for plotting purposes
