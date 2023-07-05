@@ -118,93 +118,43 @@ class CustomEnv(gym.Env):
     ):  # This method is called at the begining of each episode
         self.episode_counter.value += 1
         self.overshoot=False
-        self.t_action=0
         self.j = 0  # action counter
 
         if self.episode_counter.value > 1:  # if not first episode
             print("reset")
-            if user == "PIVUSER":
-                eng.stop_lc(nargout=0)  # stop loadcell
-
             self.process.join()
             self.save_data()  # save data from previous ep
 
-            self.history_states = np.zeros((100000, 3))
-            self.history_action = np.zeros(100000)
-            self.history_action_abs = np.zeros(100000)
-            self.history_reward = np.zeros(100000)
-            self.history_timestamp_actions = np.zeros(100000)
-            self.Cp = Value("d", 0)
-            self.reading_bool = Value(c_bool, False)
-            self.terminated = Value(c_bool, False)
-            self.pitch_is = Value("d", 0)
-            self.nrot = Value("i", 0)
-            self.t_start=Value('d',0)
-            manager = Manager()
-            self.state = manager.list()
-            self.state[:] = [0, 0, 0]
+        self.history_states = np.zeros((100000, 3))
+        self.history_action = np.zeros(100000)
+        self.history_action_abs = np.zeros(100000)
+        self.history_reward = np.zeros(100000)
+        self.history_timestamp_actions = np.zeros(100000)
+        self.Cp = Value("d", 0)
+        self.reading_bool = Value(c_bool, False)
+        self.terminated = Value(c_bool, False)
+        self.pitch_is = Value("d", 0)
+        self.nrot = Value("i", 0)
+        self.t_start=Value('d',0)
+        manager = Manager()
+        self.state = manager.list()
+        self.state[:] = [0, 0, 0]
 
-            self.process = Process(
-                target=continuously_read,
-                args=(
-                    self.terminated,
-                    self.state,
-                    self.Cp,
-                    self.nrot,
-                    self.pitch_is,
-                    self.reading_bool,
-                    self.episode_counter,
-                    self.t_start
-                ),
-            )
+        self.process = Process(
+            target=continuously_read,
+            args=(
+                self.terminated,
+                self.state,
+                self.Cp,
+                self.nrot,
+                self.pitch_is,
+                self.reading_bool,
+                self.episode_counter,
+                self.t_start
+            ),
+        )
 
-            if user == "PIVUSER":
-                try:
-                    eng.start_lc(nargout=0)  # Start the loadcell
-                except:
-                    print("Did not start loadcell !!")
-
-            self.process.start()
-
-        else:  # first episode : start load cell, get offset, start motor
-            print("first episode")
-
-            self.history_states = np.zeros((100000, 3))
-            self.history_action = np.zeros(100000)
-            self.history_action_abs = np.zeros(100000)
-            self.history_reward = np.zeros(100000)
-            self.history_timestamp_actions = np.zeros(100000)
-            self.reading_bool = Value(c_bool, False)
-            self.terminated = Value(c_bool, False)
-            self.Cp = Value("d", 0)
-            self.pitch_is = Value("d", 0)
-            self.nrot = Value("i", 0)
-            self.t_start=Value('d',0)
-            manager = Manager()
-            self.state = manager.list()
-            self.state[:] = [0, 0, 0]
-
-            self.process = Process(
-                target=continuously_read,
-                args=(
-                    self.terminated,
-                    self.state,
-                    self.Cp,
-                    self.nrot,
-                    self.pitch_is,
-                    self.reading_bool,
-                    self.episode_counter,
-                    self.t_start
-                ),
-            )
-
-            if user == "PIVUSER":
-                try:
-                    eng.start_lc(nargout=0)  # Start the loadcell
-                except:
-                    print("Did not start loadcell !!")
-
-            self.process.start()
+        self.process.start()
 
         info = {}
         # -----------------------------------
@@ -240,8 +190,6 @@ class CustomEnv(gym.Env):
 
         self.terminated.value = True
         self.process.join()
-        if user == "PIVUSER":
-            eng.stop_lc(nargout=0)  # stop loadcell
         self.save_data()
         g.GClose()
 
@@ -323,8 +271,13 @@ def continuously_read(
     offset = np.mean(offset_volts[:k], 0)
     # ------------------------------------------------------------------------
 
-    # ----------------------------START MOTOR---------------------------------
+    # ----------------------------START MOTOR AND LOADCELL--------------------
+
+    eng.start_lc(nargout=0)  # Start the loadcell
     t_start.value = wpt.time()
+    # t_start.value=eng.workspace['t_start']
+
+
     g.GCommand("SHE")
     g.GCommand(f"JGE={int(param['JG'])}")
     g.GCommand("BGE")
@@ -531,6 +484,7 @@ def continuously_read(
     # ----------------------------------------------------------------
 
     # ------------SAVE DATA-------------------------------------------
+    eng.stop_lc(nargout=0)  # stop loadcell
     if user == "PIVUSER":
         path = f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms001mpt{'{:03}'.format(episode_counter.value)}_1.mat"
         dict = {
