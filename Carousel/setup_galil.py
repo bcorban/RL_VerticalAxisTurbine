@@ -2,7 +2,7 @@ def setup_g(g): #sets up somme motor and galil parameters
     c = g.GCommand
     # Increase the acceleration and deceleration of the motor
     ACF = 1.5
-    SPF = 1000000
+    SPF = 10000000
     KSF = 0.5  # Between 0.25 (low smoothing) and 64 (high smoothing)
 
     c(f"ACF={round(256000 * ACF)}")

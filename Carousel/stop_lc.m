@@ -2,7 +2,7 @@ lc.stopLC()
 volts_ni = lc.data;
 t_ni = lc.time;
 
-file_folder = 'C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc001\raw\20230628';
+file_folder = 'C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc001\raw\20230706';
 ms = 1;
 % mpt: just count the number of file ms00*mpt* and add +1.
 mpt = fix(length(dir(fullfile(file_folder,sprintf("ms%03d*", ms))))/3) + 1;

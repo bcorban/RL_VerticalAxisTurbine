@@ -7,7 +7,6 @@ import random
 import time
 from distutils.util import strtobool
 import gclib
-from setup_galil import setup_g
 import gym
 import numpy as np
 import torch
@@ -32,7 +31,7 @@ def parse_args():
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, cuda will be enabled by default")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
     parser.add_argument("--wandb-project-name", type=str, default="RL_VAWT",
         help="the wandb's project name")
@@ -45,7 +44,7 @@ def parse_args():
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=700,
+    parser.add_argument("--total-timesteps", type=int, default=12000,
         help="total timesteps of the experiments")
     parser.add_argument("--buffer-size", type=int, default=int(1e6),
         help="the replay memory buffer size")
@@ -55,7 +54,7 @@ def parse_args():
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=512,
         help="the batch size of sample from the reply memory")
-    parser.add_argument("--learning-starts", type=int, default=600, #TO CHANGE (was 5e3) !!!
+    parser.add_argument("--learning-starts", type=int, default=2000, #TO CHANGE (was 5e3) !!!
         help="timestep to start learning")
     parser.add_argument("--policy-lr", type=float, default=3e-4,
         help="the learning rate of the policy network optimizer")
@@ -165,9 +164,6 @@ if __name__ == '__main__':
     elif user == 'adminit':
         g.GOpen("192.168.255.25 --direct -s ALL")
         
-
-    setup_g(g)
-
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
@@ -268,34 +264,6 @@ if __name__ == '__main__':
         # t_1=time.time()
         _, _, dones, infos = envs.step(actions)
 
-        # # TRY NOT TO MODIFY: record rewards for plotting purposes
-        # mean_r+=rewards[0]
-        # mean_cp+=rewards[0]*4-2
-
-        # if global_step%50==0:
-        #     writer.add_scalar("charts/mean_reward_last_50", mean_r/50, global_step)
-        #     writer.add_scalar("charts/mean_cp_last_50", mean_cp/50, global_step)
-        #     mean_r=0
-        #     mean_cp=0
-
-        # for info in infos:
-            
-        #     if "episode" in info.keys():
-        #         print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-        #         writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-        #         writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-        #         break
-        
-        # # TRY NOT TO MODIFY: save data to replay buffer; handle `terminal_observation`
-        # real_next_obs = next_obs.copy()
-        # for idx, d in enumerate(dones):
-        #     if d:
-        #         real_next_obs[idx] = infos[idx]["terminal_observation"]
-        # # rb.add(obs, real_next_obs, actions, rewards, dones, infos)
-
-        # # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
-        # obs = next_obs
-        
         # ALGO LOGIC: training loop begin--------------------------------------------------
         if global_step > args.learning_starts:
 
@@ -378,7 +346,7 @@ if __name__ == '__main__':
             
             # time_total.append(time.time()-t_1)
         else:
-            time.sleep(0.013)
+            time.sleep(0.015)
             if global_step % 100== 0:
                 print("SPS:", int(100 / (time.time() - SPS_time)))
                 SPS_time=time.time()
@@ -390,7 +358,7 @@ if __name__ == '__main__':
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         mean_r+=rewards[0]
-        mean_cp+=rewards[0]*4+2
+        mean_cp+=rewards[0]*4-2
 
         if global_step%50==0:
             writer.add_scalar("charts/mean_reward_last_50", mean_r/50, global_step)

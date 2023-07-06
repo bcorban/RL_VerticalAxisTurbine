@@ -1,5 +1,5 @@
 import numpy as np
-
+from setup_galil import setup_g
 # import gymnasium as gym
 # from gymnasium.spaces import Box, Discrete
 import gym
@@ -77,8 +77,8 @@ class CustomEnv(gym.Env):
     ):  # This method performs one step, i.e. one pitching command, and returns the next state and reward
         
         self.overshoot = False
-        # self.action_abs = self.pitch_is.value + action  # in degrees
-        self.action_abs=0
+        self.action_abs = self.pitch_is.value + action  # in degrees
+        # self.action_abs=0
 
         if self.action_abs > 30:
             self.action_abs = 30
@@ -256,6 +256,10 @@ def continuously_read(
     eng.my_quick_home(nargout=0)
     g.GCommand("OEF=2")
     g.GCommand("DEF=0")  # force encoder signal to 0 after homing 
+    
+    # Reset acceleration and speed after the homing
+    setup_g(g)
+
     # ------------------------------------------------------------------------
     # -------------------------MEASURE OFFSET---------------------------------
     print("Offset")
@@ -285,6 +289,7 @@ def continuously_read(
     # initialize position tracking
     g.GCommand("SHF")
     g.GCommand("PTF=1")
+    
     # --------------------Wait for 3 rotations--------------------------------
     while float(g.GCommand("MG _TPE")) / m[0]["es"] // 360 < 3:
         # time.sleep(0.001)
@@ -292,11 +297,11 @@ def continuously_read(
 
     # ------------------------------------------------------------------------
     print("begin reading")
-    reading_bool.value = True  # when this bool turns true, the reset() method in the other process can go on
 
+    reading_bool.value = True  # when this bool turns true, the reset() method in the other process can go on
+    
     while not terminated.value and i < N:  # while episode not ended and lists not full
         # ----------BEGIN READ STATE-----------------------------------------
-
         history_time[i] = wpt.time() - t_start.value  # get time
 
         # read galil output (volts)
@@ -462,7 +467,9 @@ def continuously_read(
             + param["Finertial"]
         ) / param["f_denom"]
 
-        state[:2] = history_coeff[i]  # update state
+        # state[:2] = history_coeff[i]  # update state
+        state[0] = (history_coeff[i,0] + 0.3)/1.1 #Normalize state (Ct+min_Ct_non_actuated)/max-min
+        state[1] = (history_coeff[i,1] + 1.8)/6
 
         # adding Cr with T/5 time delay to the state. Check in the 500 past measures which one was exactly T/5 seconds away.
         npast = 300
@@ -470,7 +477,7 @@ def continuously_read(
             idx = np.searchsorted(
                 history_time[-npast:], history_time[i] - param["rotT"] / 5, side="left"
             )
-            state[2] = history_coeff[-npast + idx, 1]  # add Cr(t-T/5)
+            state[2] = (history_coeff[-npast + idx, 1]+1.8)/6  # add Cr(t-T/5) normalized
 
         i += 1  # update counter
 

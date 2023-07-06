@@ -1,7 +1,7 @@
-folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc001\raw\20230628\';
+folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc001\raw\20230706\';
 load(append(folder,'ms001mpt002_3.mat'))
 load(append(folder,'ms001mpt001_1.mat'))
-
+load(append(folder,'ms001mpt001_2.mat'))
 figure;
 plot(t_g,-volts_raw_g(:,2));
 hold on
@@ -21,6 +21,9 @@ hold on
 %reinterpolate all galil quantities + correct delay
 pitch_is_r=single(interp1(t_g,pitch_is,t_ni,'linear',0));
 pitch_is_r=pitch_is_r(range(delay:end));
+
+pitch_should_r=single(interp1(t_g,pitch_should,t_ni,'linear',0));
+pitch_should_r=pitch_should_r(range(delay:end));
 
 pitch_should_r=single(interp1(t_g,pitch_should,t_ni,'linear',0));
 pitch_should_r=pitch_should_r(range(delay:end));
