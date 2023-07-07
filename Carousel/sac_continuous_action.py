@@ -44,9 +44,9 @@ def parse_args():
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=12000,
+    parser.add_argument("--total-timesteps", type=int, default=150000,
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(1e6),
+    parser.add_argument("--buffer-size", type=int, default=int(1e5),
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
@@ -54,7 +54,7 @@ def parse_args():
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=512,
         help="the batch size of sample from the reply memory")
-    parser.add_argument("--learning-starts", type=int, default=2000, #TO CHANGE (was 5e3) !!!
+    parser.add_argument("--learning-starts", type=int, default=3000, #TO CHANGE (was 5e3) !!!
         help="timestep to start learning")
     parser.add_argument("--policy-lr", type=float, default=3e-4,
         help="the learning rate of the policy network optimizer")
@@ -331,25 +331,26 @@ if __name__ == '__main__':
                 writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                 writer.add_scalar("losses/alpha", alpha, global_step)
-                print("SPS:", int(100 / (time.time() - SPS_time)))
-                SPS_time=time.time()
+                # print("SPS:", int(100 / (time.time() - SPS_time)))
+                
                 # print("SPS:", int(global_step / (time.time() - start_time)))
                 # SPS_list.append( int(100/ (time.time() - SPS_time)))
-                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+                writer.add_scalar("charts/SPS", int(100 / (time.time() - SPS_time)), global_step)
+                SPS_time=time.time()
                 if args.autotune:
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
                 
                 
             if update % CHECKPOINT_FREQUENCY == 0 and args.track:
                 torch.save(actor.state_dict(), f"{wandb.run.dir}/actor.pt")
-                wandb.save(f"{wandb.run.dir}/actor.pt", policy="now", base_path=f"{wandb.run.dir}")
+                wandb.save(f"{wandb.run.dir}/actor_step_{global_step}.pt", policy="now", base_path=f"{wandb.run.dir}")
             
             # time_total.append(time.time()-t_1)
         else:
-            time.sleep(0.015)
-            if global_step % 100== 0:
-                print("SPS:", int(100 / (time.time() - SPS_time)))
-                SPS_time=time.time()
+            time.sleep(0.013)
+            # if global_step % 100== 0:
+            #     print("SPS:", int(100 / (time.time() - SPS_time)))
+            #     SPS_time=time.time()
         
         #-------------------Training loop end------------------------------------
         

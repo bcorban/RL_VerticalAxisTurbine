@@ -116,15 +116,15 @@ class CustomEnv(gym.Env):
         return_info: bool = False,
         options: Optional[dict] = None,
     ):  # This method is called at the begining of each episode
-        self.episode_counter.value += 1
-        self.overshoot=False
-        self.j = 0  # action counter
-
-        if self.episode_counter.value > 1:  # if not first episode
+        
+        if self.episode_counter.value >= 1:  # if not first episode
             print("reset")
             self.process.join()
             self.save_data()  # save data from previous ep
 
+        self.overshoot=False
+        self.j = 0  # action counter
+        self.episode_counter.value += 1
         self.history_states = np.zeros((100000, 3))
         self.history_action = np.zeros(100000)
         self.history_action_abs = np.zeros(100000)

@@ -1,7 +1,7 @@
-folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc001\raw\20230706\';
+folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc001\raw\20230707\';
 load(append(folder,'ms001mpt002_3.mat'))
-load(append(folder,'ms001mpt001_1.mat'))
-load(append(folder,'ms001mpt001_2.mat'))
+load(append(folder,'ms001mpt002_1.mat'))
+load(append(folder,'ms001mpt002_2.mat'))
 figure;
 plot(t_g,-volts_raw_g(:,2));
 hold on
