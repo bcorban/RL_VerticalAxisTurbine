@@ -61,7 +61,7 @@ class CustomEnv(gym.Env):
         )
 
         self.observation_space = Box(
-            low=np.array([-10, -10, -10]), high=np.array([10, 10, 10])
+            low=np.array([-5, -5, -5]), high=np.array([5, 5, 5])
         )
 
         self.N_transient_effects = CONFIG_ENV[
