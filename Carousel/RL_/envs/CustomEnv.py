@@ -16,12 +16,18 @@ from scipy import signal
 from scipy.io import savemat
 from config_ENV import CONFIG_ENV
 from param_matlab import param, m, NI
+import load_mat
 import getpass
 import ray
 import threading
 from multiprocessing import Process, Value, Manager
 from ctypes import c_bool
 import win_precise_time as wpt
+
+ACTUATE=True
+if ACTUATE:
+    Cp_na_=load_mat.load_mat(f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/Cp_phavg.mat")
+    Cp_na=np.array(Cp_na_['Cp_phavg']['phavg'])
 
 user = getpass.getuser()
 if user == "PIVUSER":
@@ -77,8 +83,10 @@ class CustomEnv(gym.Env):
     ):  # This method performs one step, i.e. one pitching command, and returns the next state and reward
         
         self.overshoot = False
-        self.action_abs = self.pitch_is.value + action  # in degrees
-        # self.action_abs=0
+        if ACTUATE:
+            self.action_abs = self.pitch_is.value + action  # in degrees
+        else:
+            self.action_abs=0
 
         if self.action_abs > 30:
             self.action_abs = 30
@@ -134,6 +142,7 @@ class CustomEnv(gym.Env):
         self.reading_bool = Value(c_bool, False)
         self.terminated = Value(c_bool, False)
         self.pitch_is = Value("d", 0)
+        self.phase=Value("d",0)
         self.nrot = Value("i", 0)
         self.t_start=Value('d',0)
         manager = Manager()
@@ -150,7 +159,8 @@ class CustomEnv(gym.Env):
                 self.pitch_is,
                 self.reading_bool,
                 self.episode_counter,
-                self.t_start
+                self.t_start,
+                self.phase
             ),
         )
 
@@ -175,7 +185,7 @@ class CustomEnv(gym.Env):
     def save_data(self):  # export data from an episode into a .mat file
         print("saving data...")
         if user == "PIVUSER":
-            path = f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms006mpt{'{:03}'.format(self.episode_counter.value)}_2.mat"
+            path = f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms{'{:03}'.format(CONFIG_ENV['ms'])}mpt{'{:03}'.format(self.episode_counter.value)}_2.mat"
             dict = {
                 "state": self.history_states[:self.j],
                 "action": self.history_action[:self.j],
@@ -195,13 +205,14 @@ class CustomEnv(gym.Env):
 
     def get_transition(self):
 
-        next_state, Cp_ = np.array(self.state), self.Cp.value
+        next_state, Cp_, phase_ = np.array(self.state), self.Cp.value, int(self.phase.value)
         # print(Cp_)
         if self.overshoot:
-            self.reward = -1
+            self.reward = -2
         else:
-            self.reward = max(Cp_,0) / 0.3  # transformation to keep reward roughly between 0 and 1
-        
+            # self.reward=(Cp_+0.2)
+            # self.reward = max(Cp_,0) / 0.3  # transformation to keep reward roughly between 0 and 1
+            self.reward=max(-2,(Cp_-Cp_na[phase_])*5)
         self.history_states[self.j] = next_state
         self.history_reward[self.j] = self.reward
         self.j += 1
@@ -210,7 +221,7 @@ class CustomEnv(gym.Env):
         # --------------------------------------------------------------
 
 def continuously_read(
-    terminated, state, Cp, rot_number, pitch_is, reading_bool, episode_counter, t_start
+    terminated, state, Cp, rot_number, pitch_is, reading_bool, episode_counter, t_start, phase_for_reward
 ):
     N = 1000000
     reading_bool.value = False
@@ -325,6 +336,7 @@ def continuously_read(
         history_phase[i] = galil_output[5] / m[0]["es"] % 360  # In degrees
         history_phase_cont[i] = galil_output[5] / m[0]["es"]  # In degrees
         rot_number.value = int(galil_output[5] / m[0]["es"] // 360)
+        phase_for_reward.value = history_phase[i]
         history_pitch_done[i] = galil_output[6] / m[1]["ms"]  # In degrees
         history_pitch_is[i] = galil_output[7] / m[1]["es"]  # In degrees
         pitch_is.value = history_pitch_is[i]
@@ -493,7 +505,7 @@ def continuously_read(
     # ------------SAVE DATA-------------------------------------------
     eng.stop_lc(nargout=0)  # stop loadcell
     if user == "PIVUSER":
-        path = f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms006mpt{'{:03}'.format(episode_counter.value)}_1.mat"
+        path = f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms{'{:03}'.format(CONFIG_ENV['ms'])}mpt{'{:03}'.format(episode_counter.value)}_1.mat"
         dict = {
             "param": param,
             "t_g": history_time[:i-1],

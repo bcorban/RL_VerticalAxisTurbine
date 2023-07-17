@@ -1,6 +1,6 @@
-function res=process_ni(ms,mpt)
+function [res param]=process_ni(ms,mpt,folder)
     
-    folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc001\raw\20230711\';
+    % folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc001\raw\20230717\';
     
     load(append(folder,sprintf('ms%03dmpt%03d_1.mat',ms,mpt)))
     load(append(folder,sprintf('ms%03dmpt%03d_2.mat',ms,mpt)))
@@ -130,16 +130,23 @@ function res=process_ni(ms,mpt)
     % Moment of inertia. Compute angular acceleration (filtered)
     % NOTE: res.Mz = res.Mzfull, the intertial moment was not removed.
     res.Cp = Cp_vawt_inst(res.Ft, res.Mz, res.dpitch, param);
-    
+    figure;
+    plot(res.Cp)
     % Add Cp to the file
     param.Cp = mean(res.Cp(res_range));
     
+    % COMPUTE PHAVG CP
+    if ms == 1
+        [p Cp_phavg]=phaseavgthis(deg2rad(res.phase),res.Cp,360);
+        % figure;
+        % plot(p,Cp_phavg.phavg)
+        res.phavg_list=p;
+        res.Cp_phavg=Cp_phavg.phavg;
+        save(append(folder,'Cp_phavg.mat'),"Cp_phavg","Cp_phavg")
+    end
     % figure;
-    % plot(phase_cont/360,pitch_is);
-    % 
-    figure;
-    % 
-    plot(reward);
+    % % 
+    % plot(reward);
     % 
     % t=phase;
     % y=pitch_is;

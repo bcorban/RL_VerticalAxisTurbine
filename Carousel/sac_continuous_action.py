@@ -44,11 +44,11 @@ def parse_args():
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=50000,
+    parser.add_argument("--total-timesteps", type=int, default=200000,
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(50000),
+    parser.add_argument("--buffer-size", type=int, default=int(200000),
         help="the replay memory buffer size")
-    parser.add_argument("--gamma", type=float, default=0.95,
+    parser.add_argument("--gamma", type=float, default=0.96,
         help="the discount factor gamma")
     parser.add_argument("--tau", type=float, default=0.005,
         help="target smoothing coefficient (default: 0.005)")
@@ -256,7 +256,7 @@ if __name__ == '__main__':
 
     start_time = time.time()
     mean_r=0
-    mean_cp=0
+    # mean_cp=0
     update=0
 
     SPS_time=time.time()
@@ -370,17 +370,17 @@ if __name__ == '__main__':
 
             # TRY NOT TO MODIFY: record rewards for plotting purposes
             mean_r+=rewards[0]
-            mean_cp+=rewards[0]*0.3
+            # mean_cp+=rewards[0]-0.2
 
             if global_step%45==0:
-                writer.add_scalar("charts/mean_reward_last_50", mean_r/45, global_step)
-                writer.add_scalar("charts/mean_cp_last_50", mean_cp/45, global_step)
+                writer.add_scalar("charts/mean_reward_last_45", mean_r/45, global_step)
+                # writer.add_scalar("charts/mean_cp_last_45", mean_cp/45, global_step)
 
-                if global_step > args.learning_starts and mean_cp/45>0.18:
+                if global_step > args.learning_starts and mean_r/45>1:
                     torch.save(actor.state_dict(), f"{wandb.run.dir}/actor_step_{global_step}.pt")
                     # wandb.save(f"{wandb.run.dir}/actor_step_{global_step}.pt", policy="now", base_path=f"{wandb.run.dir}")
                 mean_r=0
-                mean_cp=0
+                # mean_cp=0
 
 
             for info in infos:

@@ -1,12 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from config_ENV import CONFIG_ENV
+# from param_matlab import param, m, NI
+import load_mat
 
-
-t_a=1.005
-d=np.load('test.npz')
-tpf=d['tpf']
-t=d['t']
-plt.figure()
-plt.plot(t,tpf, '-o')
-plt.scatter([t_a],[6])
-plt.show()
+Cp_na=load_mat.load_mat(f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/Cp_phavg.mat")
+print(Cp_na)
