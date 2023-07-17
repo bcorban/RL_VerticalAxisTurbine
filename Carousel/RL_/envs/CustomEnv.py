@@ -175,7 +175,7 @@ class CustomEnv(gym.Env):
     def save_data(self):  # export data from an episode into a .mat file
         print("saving data...")
         if user == "PIVUSER":
-            path = f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms001mpt{'{:03}'.format(self.episode_counter.value)}_2.mat"
+            path = f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms006mpt{'{:03}'.format(self.episode_counter.value)}_2.mat"
             dict = {
                 "state": self.history_states[:self.j],
                 "action": self.history_action[:self.j],
@@ -200,7 +200,7 @@ class CustomEnv(gym.Env):
         if self.overshoot:
             self.reward = -1
         else:
-            self.reward = (Cp_ + 2) / 4  # transformation to keep reward roughly between 0 and 1
+            self.reward = max(Cp_,0) / 0.3  # transformation to keep reward roughly between 0 and 1
         
         self.history_states[self.j] = next_state
         self.history_reward[self.j] = self.reward
@@ -475,9 +475,9 @@ def continuously_read(
         npast = 300
         if i > npast:
             idx = np.searchsorted(
-                history_time[-npast:], history_time[i] - param["rotT"] / 5, side="left"
+                history_time[i-npast:i], history_time[i] - param["rotT"] / 5, side="left"
             )
-            state[2] = (history_coeff[-npast + idx, 1]+1.8)/6  # add Cr(t-T/5) normalized
+            state[2] = (history_coeff[i-npast + idx, 1]+1.8)/6  # add Cr(t-T/5) normalized
 
         i += 1  # update counter
 
@@ -493,7 +493,7 @@ def continuously_read(
     # ------------SAVE DATA-------------------------------------------
     eng.stop_lc(nargout=0)  # stop loadcell
     if user == "PIVUSER":
-        path = f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms001mpt{'{:03}'.format(episode_counter.value)}_1.mat"
+        path = f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms006mpt{'{:03}'.format(episode_counter.value)}_1.mat"
         dict = {
             "param": param,
             "t_g": history_time[:i-1],

@@ -31,7 +31,7 @@ def parse_args():
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, cuda will be enabled by default")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
     parser.add_argument("--wandb-project-name", type=str, default="RL_VAWT",
         help="the wandb's project name")
@@ -44,19 +44,19 @@ def parse_args():
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=150000,
+    parser.add_argument("--total-timesteps", type=int, default=50000,
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(1e5),
+    parser.add_argument("--buffer-size", type=int, default=int(50000),
         help="the replay memory buffer size")
-    parser.add_argument("--gamma", type=float, default=0.99,
+    parser.add_argument("--gamma", type=float, default=0.95,
         help="the discount factor gamma")
     parser.add_argument("--tau", type=float, default=0.005,
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=512,
         help="the batch size of sample from the reply memory")
-    parser.add_argument("--learning-starts", type=int, default=3000, #TO CHANGE (was 5e3) !!!
+    parser.add_argument("--learning-starts", type=int, default=5000, #TO CHANGE (was 5e3) !!!
         help="timestep to start learning")
-    parser.add_argument("--policy-lr", type=float, default=3e-4,
+    parser.add_argument("--policy-lr", type=float, default=5e-4,
         help="the learning rate of the policy network optimizer")
     parser.add_argument("--q-lr", type=float, default=1e-3,
         help="the learning rate of the Q network network optimizer")
@@ -272,10 +272,10 @@ if __name__ == '__main__':
             
             obs=np.array([envs.envs[0].state]) #Read state before deciding action
             if global_step < args.learning_starts:
-                if global_step<200:
-                    actions=np.array([0])
-                else:
-                    actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
+                # if global_step<200:
+                #     actions=np.array([0])
+                # else:
+                actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
             else:
                 actions, _, _ = actor.get_action(torch.Tensor(obs).to(device))
                 actions = actions.detach().cpu().numpy()
@@ -358,7 +358,7 @@ if __name__ == '__main__':
                     
                 # time_total.append(time.time()-t_1)
             else:
-                time.sleep(0.013)
+                time.sleep(0.0133)
                 # if global_step % 100== 0:
                 #     print("SPS:", int(100 / (time.time() - SPS_time)))
                 #     SPS_time=time.time()
@@ -370,18 +370,17 @@ if __name__ == '__main__':
 
             # TRY NOT TO MODIFY: record rewards for plotting purposes
             mean_r+=rewards[0]
-            mean_cp+=rewards[0]*4-2
+            mean_cp+=rewards[0]*0.3
 
             if global_step%45==0:
                 writer.add_scalar("charts/mean_reward_last_50", mean_r/45, global_step)
                 writer.add_scalar("charts/mean_cp_last_50", mean_cp/45, global_step)
+
+                if global_step > args.learning_starts and mean_cp/45>0.18:
+                    torch.save(actor.state_dict(), f"{wandb.run.dir}/actor_step_{global_step}.pt")
+                    # wandb.save(f"{wandb.run.dir}/actor_step_{global_step}.pt", policy="now", base_path=f"{wandb.run.dir}")
                 mean_r=0
                 mean_cp=0
-
-            if global_step > args.learning_starts and mean_cp>0.18:
-                torch.save(actor.state_dict(), f"{wandb.run.dir}/actor_step_{global_step}.pt")
-                # wandb.save(f"{wandb.run.dir}/actor_step_{global_step}.pt", policy="now", base_path=f"{wandb.run.dir}")
-
 
 
             for info in infos:
