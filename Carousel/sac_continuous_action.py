@@ -317,8 +317,8 @@ if __name__ == '__main__':
                         qf1_pi = qf1(data.observations, pi)
                         qf2_pi = qf2(data.observations, pi)
                         min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
-                        actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
-
+                        # actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
+                        actor_loss = ((0.1 * log_pi) - min_qf_pi).mean()
                         actor_optimizer.zero_grad()
                         actor_loss.backward()
                         actor_optimizer.step()
@@ -376,7 +376,7 @@ if __name__ == '__main__':
                 writer.add_scalar("charts/mean_reward_last_45", mean_r/45, global_step)
                 # writer.add_scalar("charts/mean_cp_last_45", mean_cp/45, global_step)
 
-                if global_step > args.learning_starts and mean_r/45>1:
+                if global_step > args.learning_starts and mean_r/45>0.1:
                     torch.save(actor.state_dict(), f"{wandb.run.dir}/actor_step_{global_step}.pt")
                     # wandb.save(f"{wandb.run.dir}/actor_step_{global_step}.pt", policy="now", base_path=f"{wandb.run.dir}")
                 mean_r=0
@@ -404,7 +404,7 @@ if __name__ == '__main__':
             # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
             obs = next_obs
 
-        except KeyboardInterrupt: #if the training is interrupted
+        except: #if the training is interrupted
             print("training interrupted, saving last policy and q functions")
             torch.save(actor.state_dict(), f"{wandb.run.dir}/actor_final.pt")
             # wandb.save(f"{wandb.run.dir}/actor_final.pt", policy="now", base_path=f"{wandb.run.dir}")
@@ -415,13 +415,17 @@ if __name__ == '__main__':
             torch.save(log_alpha, f"{wandb.run.dir}/log_alpha_final.pt")
             # wandb.save(f"{wandb.run.dir}/log_alpha_final.pt", base_path=f"{wandb.run.dir}")
 
-
-
-
-    print("SPS")
-    print( int(global_step / (time.time() - start_time)))
     envs.close()
     writer.close()
+    torch.save(actor.state_dict(), f"{wandb.run.dir}/actor_final.pt")
+    # wandb.save(f"{wandb.run.dir}/actor_final.pt", policy="now", base_path=f"{wandb.run.dir}")
+    torch.save(qf1.state_dict(), f"{wandb.run.dir}/qf1_final.pt")
+    # wandb.save(f"{wandb.run.dir}/qf1_final.pt", policy="now", base_path=f"{wandb.run.dir}")
+    torch.save(qf2.state_dict(), f"{wandb.run.dir}/qf2_final.pt")
+    # wandb.save(f"{wandb.run.dir}/qf2_final.pt", policy="now", base_path=f"{wandb.run.dir}")
+    torch.save(log_alpha, f"{wandb.run.dir}/log_alpha_final.pt")
+    # wandb.save(f"{wandb.run.dir}/log_alpha_final.pt", base_path=f"{wandb.run.dir}")
+
     # print("Mean time for sampling transition")
     # print(np.mean(np.array(time_1)))
     # print("Mean time for updating policy")

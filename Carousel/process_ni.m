@@ -2,15 +2,16 @@ function [res param]=process_ni(ms,mpt,folder)
     
     % folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc001\raw\20230717\';
     
-    load(append(folder,sprintf('ms%03dmpt%03d_1.mat',ms,mpt)))
-    load(append(folder,sprintf('ms%03dmpt%03d_2.mat',ms,mpt)))
-    load(append(folder,sprintf('ms%03dmpt%03d_3.mat',ms,mpt)))
-   
+    load(append(folder,sprintf('ms%03dmpt%03d_1.mat',ms,mpt)));
+    load(append(folder,sprintf('ms%03dmpt%03d_2.mat',ms,mpt)));
+    load(append(folder,sprintf('ms%03dmpt%03d_3.mat',ms,mpt)));
+
     % figure;
-    % plot(t_g,-volts_raw_g(:,2));
+    % plot(time_action,action_abs);
     % hold on
-    % plot(t_ni,volts_ni(:,2));
-    
+    % plot(t_g,pitch_is);
+    % hold off
+
     % Resample galil volts at 1kHz
     volts_g_resync=single(interp1(t_g,volts_raw_g,t_ni,'linear',0));
     % galil starts after the NI, so find the range where both are recording
@@ -19,9 +20,9 @@ function [res param]=process_ni(ms,mpt,folder)
     % find the delay between the start of the loadcell and the reference time
     % recorded in python to resynchronize NI and galil volts
     delay=finddelay(-volts_g_resync(range,1),volts_ni(range,1));
-    
-    plot(t_ni(range(delay:end)),-volts_g_resync(range(1:end-delay+1),2));
-    hold on
+    % 
+    % plot(t_ni(range(delay:end)),-volts_g_resync(range(1:end-delay+1),2));
+    % hold on
     %reinterpolate all galil quantities + correct delay
     pitch_is_r=single(interp1(t_g,pitch_is,t_ni,'linear',0));
     pitch_is_r=pitch_is_r(range(delay:end));
@@ -130,8 +131,8 @@ function [res param]=process_ni(ms,mpt,folder)
     % Moment of inertia. Compute angular acceleration (filtered)
     % NOTE: res.Mz = res.Mzfull, the intertial moment was not removed.
     res.Cp = Cp_vawt_inst(res.Ft, res.Mz, res.dpitch, param);
-    figure;
-    plot(res.Cp)
+    % figure;
+    % plot(res.Cp)
     % Add Cp to the file
     param.Cp = mean(res.Cp(res_range));
     
