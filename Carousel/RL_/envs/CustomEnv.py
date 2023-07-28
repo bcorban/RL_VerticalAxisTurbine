@@ -138,6 +138,7 @@ class CustomEnv(gym.Env):
         self.history_action_abs = np.zeros(100000)
         self.history_reward = np.zeros(100000)
         self.history_timestamp_actions = np.zeros(100000)
+        self.history_phase_actions = np.zeros(100000)
         self.Cp = Value("d", 0)
         self.reading_bool = Value(c_bool, False)
         self.terminated = Value(c_bool, False)
@@ -192,6 +193,7 @@ class CustomEnv(gym.Env):
                 "action_abs": self.history_action_abs[:self.j],
                 "reward": self.history_reward[:self.j],
                 "time_action": self.history_timestamp_actions[:self.j],
+                "phase_action": self.history_phase_actions[:self.j],
             }
             savemat(path, dict)
 
@@ -215,6 +217,7 @@ class CustomEnv(gym.Env):
             self.reward=max(-2,(Cp_-Cp_na[phase_])*5)
         self.history_states[self.j] = next_state
         self.history_reward[self.j] = self.reward
+        self.history_phase_actions[self.j]=phase_
         self.j += 1
 
         return np.array([next_state]),np.array([self.reward]) #return state and reward in a vectorized manner for the RL loop

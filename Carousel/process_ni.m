@@ -54,6 +54,14 @@ function [res param]=process_ni(ms,mpt,folder)
     force_coeff_g_r=single(interp1(t_g,force_coeff_g,t_ni,'linear',0));
     force_coeff_g_r=force_coeff_g_r(range(delay:end),:);
     
+    reward_r=single(interp1(time_action,reward,t_ni,'linear',0));
+    reward_r=reward_r(range(delay:end));
+
+    action_r=single(interp1(time_action,action,t_ni,'linear',0));
+    action_r=action_r(range(delay:end));
+    
+
+
     phase_r=mod(phase_cont_r, 360);
     
     volts=volts_ni(range(1:end-delay+1),:);
@@ -124,6 +132,8 @@ function [res param]=process_ni(ms,mpt,folder)
     res.Cr   = projected_forces.Cr  ;
     res.Ct   = projected_forces.Ct  ;
     res.Cm   = res.Mz ./ (param.denom * param.c);
+    res.reward = reward_r;
+    res.action= action_r;
     % res.Cmx  = forces(:, 3) ./ (param.denom * param.c);
     % res.Cmy  = forces(:, 4) ./ (param.denom * param.c);
     
@@ -143,6 +153,7 @@ function [res param]=process_ni(ms,mpt,folder)
         % plot(p,Cp_phavg.phavg)
         res.phavg_list=p;
         res.Cp_phavg=Cp_phavg.phavg;
+        param.Cp = mean(Cp_phavg.phavg);
         save(append(folder,'Cp_phavg.mat'),"Cp_phavg","Cp_phavg")
     end
     % figure;

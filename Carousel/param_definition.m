@@ -84,4 +84,4 @@ param.F0 = (param.Uinf).^2*0.5*param.rho*(param.Csp*param.spr^2*pi*2+CDnaca0*par
 load(NI.calmat,'R4');
 param.R4=R4;
 
-save('/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/param.mat','param')
+save('/home/adminit/RL_VerticalAxisTurbine/Carousel/param.mat','param')
