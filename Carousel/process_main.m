@@ -24,7 +24,7 @@ for k = 1:2:numel(pkidx)-1
 end
 
 meanCp=[];
-meanreward=[];
+totalreward=[];
 figure;
 
 c=gray(numel(phase_vector)); %colormap
@@ -34,7 +34,7 @@ hold on
 for k = 1:numel(phase_vector)
     plot(phase_vector{k}, Cp_vector{k},'color',c(k,:))                % plot Results
     meanCp(end+1) = mean(Cp_vector{k});
-    meanreward(end+1)=mean(reward_vector{k});
+    totalreward(end+1)=sum(reward_vector{k});
     
 end
 xlim([0 360]);
@@ -42,7 +42,7 @@ xlabel("phase");
 ylabel("Cp");
 
 [max_Cp argmax_Cp] = max(meanCp)
-[max_reward argmax_reward] = max(meanreward)
+[max_reward argmax_reward] = max(totalreward)
 meanCp(argmax_reward)
 plot(0:359,Cp_phavg.phavg,'color','#d8b365',linewidth=2)
 plot(phase_vector{argmax_Cp}, Cp_vector{argmax_Cp},'color','#5ab4ac',linewidth=2.5)
