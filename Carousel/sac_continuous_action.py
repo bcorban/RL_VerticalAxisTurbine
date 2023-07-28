@@ -44,9 +44,9 @@ def parse_args():
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=200000,
+    parser.add_argument("--total-timesteps", type=int, default=160000,
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(200000),
+    parser.add_argument("--buffer-size", type=int, default=int(1600000),
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.96,
         help="the discount factor gamma")
@@ -318,7 +318,7 @@ if __name__ == '__main__':
                         qf2_pi = qf2(data.observations, pi)
                         min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
                         # actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
-                        actor_loss = ((0.1 * log_pi) - min_qf_pi).mean()
+                        actor_loss = ((0.3 * log_pi) - min_qf_pi).mean()
                         actor_optimizer.zero_grad()
                         actor_loss.backward()
                         actor_optimizer.step()

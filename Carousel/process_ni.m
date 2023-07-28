@@ -67,7 +67,7 @@ function [res param]=process_ni(ms,mpt,folder)
     param.denom=param.f_denom;
     % number of rotation for postprocessing
     param.n_rot_trans = 0;
-    param.n_rot = 5;
+    param.n_rot = 1000;
     
     % Remove offset
     volts=volts+v_offset_g;
