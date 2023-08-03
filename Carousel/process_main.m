@@ -1,12 +1,12 @@
 clear
 close all
-folder='/home/adminit/RL_VerticalAxisTurbine/Carousel/2023_BC/bc002/raw/20230727/';
+folder='/home/adminit/RL_VerticalAxisTurbine/Carousel/2023_BC/bc002/raw/20230721/';
 
 addpath(genpath('/home/adminit/Documents/MATLAB/fuf'))
 addpath(genpath('/home/adminit/Documents/MATLAB/app_motioncontrol'))
 addpath(genpath('/home/adminit/Documents/MATLAB/src_motioncontrol'))
 load(append(folder,"Cp_phavg.mat"))
-ms=2;
+ms=4;
 mpt=2;
 [res, param]=process_ni(ms,mpt,folder);
 
@@ -16,7 +16,7 @@ pkidx = sort([locsv locsp(locsp > locsv(1))]);             % Edit & Sort Indices
 
 for k = 1:2:numel(pkidx)-1
     idxrng = pkidx(k):pkidx(k+1);                           % Index Range For Each Segment
-    phase_vector{k} = transpose(res.phase(idxrng));         % Corrseponding phase Vector
+    phase_vector{k} = transpose(res.phase(idxrng));         % Corresponding phase Vector
     Cp_vector{k} = transpose(res.Cp(idxrng));               % Corresponding Cp Vector
     pitch_vector{k} = transpose(rad2deg(res.pitch(idxrng))); 
     alpha_vector{k}=atand(sind(phase_vector{k})./(param.lambda+cosd(phase_vector{k})));% Corresponding pitch Vector
@@ -79,7 +79,7 @@ plot(phase_vector{argmax_Cp}, alpha_vector{argmax_Cp}+pitch_vector{argmax_Cp},'c
 plot(phase_vector{argmax_Cp},alpha_vector{argmax_Cp},'color','#d8b365',linewidth=2)
 hold off
 grid
-
+exportgraphics(gcf,append(folder,sprintf('alpha_ms%03dmpt%03d.png',ms,mpt)),'Resolution',300)
 
 figure;
 hold on
@@ -89,3 +89,4 @@ end
 plot(phase_vector{argmax_Cp},reward_vector{argmax_Cp},'color','#5ab4ac',linewidth=2.5);
 plot(phase_vector{argmax_Cp},5*(Cp_vector{argmax_Cp}-interp1(0:359,Cp_phavg.phavg,phase_vector{argmax_Cp},'linear',0)),'color','blue');
 plot(phase_vector{argmax_reward},reward_vector{argmax_reward},'color','red',linewidth=2.5);
+exportgraphics(gcf,append(folder,sprintf('reward_ms%03dmpt%03d.png',ms,mpt)),'Resolution',300)
