@@ -1,7 +1,7 @@
 clear
 close all
-folder='/home/adminit/RL_VerticalAxisTurbine/Carousel/2023_BC/bc002/raw/20230721/';
-
+% folder='/home/adminit/RL_VerticalAxisTurbine/Carousel/2023_BC/bc002/raw/20230721/';
+folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc002\raw\20230727\';
 addpath(genpath('/home/adminit/Documents/MATLAB/fuf'))
 addpath(genpath('/home/adminit/Documents/MATLAB/app_motioncontrol'))
 addpath(genpath('/home/adminit/Documents/MATLAB/src_motioncontrol'))
