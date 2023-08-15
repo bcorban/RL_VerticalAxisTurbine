@@ -44,15 +44,15 @@ def parse_args():
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=160000,
+    parser.add_argument("--total-timesteps", type=int, default=100000,
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(1600000),
+    parser.add_argument("--buffer-size", type=int, default=int(100000),
         help="the replay memory buffer size")
-    parser.add_argument("--gamma", type=float, default=0.96,
+    parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
     parser.add_argument("--tau", type=float, default=0.005,
         help="target smoothing coefficient (default: 0.005)")
-    parser.add_argument("--batch-size", type=int, default=512,
+    parser.add_argument("--batch-size", type=int, default=1024,
         help="the batch size of sample from the reply memory")
     parser.add_argument("--learning-starts", type=int, default=5000, #TO CHANGE (was 5e3) !!!
         help="timestep to start learning")
@@ -153,7 +153,7 @@ class Actor(nn.Module):
 
 if __name__ == '__main__':
 # -----------------Connect to galil and set parameters ----------------------
-
+    UTD=20
     
     import getpass
     user=getpass.getuser()
@@ -286,31 +286,32 @@ if __name__ == '__main__':
 
             # ALGO LOGIC: training loop begin--------------------------------------------------
             if global_step > args.learning_starts:
+                for _ in range(UTD):
+                    data = rb.sample(args.batch_size)
+                    # print(data.observations)
+                    with torch.no_grad():
+                        next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
+                        qf1_next_target = qf1_target(data.next_observations, next_state_actions)
+                        qf2_next_target = qf2_target(data.next_observations, next_state_actions)
+                        min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
+                        next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
-                data = rb.sample(args.batch_size)
-                # print(data.observations)
-                with torch.no_grad():
-                    next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
-                    qf1_next_target = qf1_target(data.next_observations, next_state_actions)
-                    qf2_next_target = qf2_target(data.next_observations, next_state_actions)
-                    min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                    next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
+                    qf1_a_values = qf1(data.observations, data.actions).view(-1)
+                    qf2_a_values = qf2(data.observations, data.actions).view(-1)
+                    qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
+                    qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
+                    qf_loss = qf1_loss + qf2_loss
 
-                qf1_a_values = qf1(data.observations, data.actions).view(-1)
-                qf2_a_values = qf2(data.observations, data.actions).view(-1)
-                qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
-                qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
-                qf_loss = qf1_loss + qf2_loss
-
-                q_optimizer.zero_grad()
-                qf_loss.backward()
-                q_optimizer.step()
+                    q_optimizer.zero_grad()
+                    qf_loss.backward()
+                    q_optimizer.step()
                 
                 if global_step % args.policy_frequency == 0:  # TD 3 Delayed update support
                     for _ in range(
                         args.policy_frequency
                     ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
-                        update+=1
+
+                        # update+=1
                         # print("update")
                         
                         pi, log_pi, _ = actor.get_action(data.observations)
@@ -318,7 +319,7 @@ if __name__ == '__main__':
                         qf2_pi = qf2(data.observations, pi)
                         min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
                         # actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
-                        actor_loss = ((0.3 * log_pi) - min_qf_pi).mean()
+                        actor_loss = ((max(alpha,0.1) * log_pi) - min_qf_pi).mean()
                         actor_optimizer.zero_grad()
                         actor_loss.backward()
                         actor_optimizer.step()
@@ -358,7 +359,8 @@ if __name__ == '__main__':
                     
                 # time_total.append(time.time()-t_1)
             else:
-                time.sleep(0.0133)
+                # time.sleep(0.014)
+                time.sleep(0.05)
                 # if global_step % 100== 0:
                 #     print("SPS:", int(100 / (time.time() - SPS_time)))
                 #     SPS_time=time.time()

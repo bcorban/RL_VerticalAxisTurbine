@@ -7,19 +7,19 @@ from gym.spaces import Box
 import random
 import sys
 from typing import Optional
-import torch
+# import torch
 import math
 import gclib
 import matlab.engine
-import time
+# import time1
 from scipy import signal
 from scipy.io import savemat
 from config_ENV import CONFIG_ENV
 from param_matlab import param, m, NI
 import load_mat
 import getpass
-import ray
-import threading
+# import ray
+# import threading
 from multiprocessing import Process, Value, Manager
 from ctypes import c_bool
 import win_precise_time as wpt
@@ -214,7 +214,11 @@ class CustomEnv(gym.Env):
         else:
             # self.reward=(Cp_+0.2)
             # self.reward = max(Cp_,0) / 0.3  # transformation to keep reward roughly between 0 and 1
-            self.reward=max(-2,(Cp_-Cp_na[phase_])*5)
+            # if phase_<180:
+            #     self.reward=max(-2,(Cp_-Cp_na[phase_]))
+            # else:
+            #     self.reward=max(-2,(Cp_-Cp_na[phase_])*5)
+            self.reward=max(-2,(Cp_-Cp_na[phase_]))
         self.history_states[self.j] = next_state
         self.history_reward[self.j] = self.reward
         self.history_phase_actions[self.j]=phase_

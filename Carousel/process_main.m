@@ -1,26 +1,28 @@
 clear
 close all
 % folder='/home/adminit/RL_VerticalAxisTurbine/Carousel/2023_BC/bc002/raw/20230721/';
-folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc002\raw\20230727\';
-addpath(genpath('/home/adminit/Documents/MATLAB/fuf'))
-addpath(genpath('/home/adminit/Documents/MATLAB/app_motioncontrol'))
-addpath(genpath('/home/adminit/Documents/MATLAB/src_motioncontrol'))
-load(append(folder,"Cp_phavg.mat"))
-ms=4;
-mpt=2;
+folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc002\raw\20230804\';
+% addpath(genpath('/home/adminit/Documents/MATLAB/fuf'))
+% addpath(genpath('/home/adminit/Documents/MATLAB/app_motioncontrol'))
+% addpath(genpath('/home/adminit/Documents/MATLAB/src_motioncontrol'))
+
+ms=6;
+mpt=3;
 [res, param]=process_ni(ms,mpt,folder);
+load(append(folder,"Cp_phavg.mat"))
 
 [~,locsp] = findpeaks(transpose(res.phase));                                 % Find Maxima & Indices
 [~,locsv] = findpeaks(-transpose(res.phase));                                % Find Minima & Indices
 pkidx = sort([locsv locsp(locsp > locsv(1))]);             % Edit & Sort Indices
-
+a=1;
 for k = 1:2:numel(pkidx)-1
     idxrng = pkidx(k):pkidx(k+1);                           % Index Range For Each Segment
-    phase_vector{k} = transpose(res.phase(idxrng));         % Corresponding phase Vector
-    Cp_vector{k} = transpose(res.Cp(idxrng));               % Corresponding Cp Vector
-    pitch_vector{k} = transpose(rad2deg(res.pitch(idxrng))); 
-    alpha_vector{k}=atand(sind(phase_vector{k})./(param.lambda+cosd(phase_vector{k})));% Corresponding pitch Vector
-    reward_vector{k}=transpose(res.reward(idxrng));
+    phase_vector{a} = transpose(res.phase(idxrng));         % Corresponding phase Vector
+    Cp_vector{a} = transpose(res.Cp(idxrng));               % Corresponding Cp Vector
+    pitch_vector{a} = transpose(rad2deg(res.pitch(idxrng))); 
+    alpha_vector{a}=atand(sind(phase_vector{a})./(param.lambda+cosd(phase_vector{a})));% Corresponding pitch Vector
+    reward_vector{a}=transpose(res.reward(idxrng));
+    a=a+1;
 end
 
 meanCp=[];
@@ -41,9 +43,11 @@ xlim([0 360]);
 xlabel("phase");
 ylabel("Cp");
 
-[max_Cp argmax_Cp] = max(meanCp)
-[max_reward argmax_reward] = max(totalreward)
-meanCp(argmax_reward)
+
+[max_Cp argmax_Cp] = max(meanCp);
+[max_reward argmax_reward] = max(totalreward);
+disp(['Best Cp : ' num2str(max_Cp)  ' on rotation ' num2str(argmax_Cp)])
+meanCp(argmax_reward);
 plot(0:359,Cp_phavg.phavg,'color','#d8b365',linewidth=2)
 plot(phase_vector{argmax_Cp}, Cp_vector{argmax_Cp},'color','#5ab4ac',linewidth=2.5)
 plot(phase_vector{argmax_reward}, Cp_vector{argmax_reward},'color','red',linewidth=2.5)
