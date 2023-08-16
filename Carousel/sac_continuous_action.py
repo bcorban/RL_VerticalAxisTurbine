@@ -15,7 +15,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
-from replay_buffer import SB3_CustomReplayBuffer
 import RL_ 
 
 
@@ -44,15 +43,15 @@ def parse_args():
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=100000,
+    parser.add_argument("--total-timesteps", type=int, default=150000,
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(100000),
+    parser.add_argument("--buffer-size", type=int, default=int(150000),
         help="the replay memory buffer size")
-    parser.add_argument("--gamma", type=float, default=0.99,
+    parser.add_argument("--gamma", type=float, default=0.97,
         help="the discount factor gamma")
     parser.add_argument("--tau", type=float, default=0.005,
         help="target smoothing coefficient (default: 0.005)")
-    parser.add_argument("--batch-size", type=int, default=1024,
+    parser.add_argument("--batch-size", type=int, default=512,
         help="the batch size of sample from the reply memory")
     parser.add_argument("--learning-starts", type=int, default=5000, #TO CHANGE (was 5e3) !!!
         help="timestep to start learning")
@@ -153,7 +152,8 @@ class Actor(nn.Module):
 
 if __name__ == '__main__':
 # -----------------Connect to galil and set parameters ----------------------
-    UTD=20
+    UTD=1
+
     
     import getpass
     user=getpass.getuser()
@@ -319,7 +319,7 @@ if __name__ == '__main__':
                         qf2_pi = qf2(data.observations, pi)
                         min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
                         # actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
-                        actor_loss = ((max(alpha,0.1) * log_pi) - min_qf_pi).mean()
+                        actor_loss = ((max(alpha,0.005) * log_pi) - min_qf_pi).mean()
                         actor_optimizer.zero_grad()
                         actor_loss.backward()
                         actor_optimizer.step()
@@ -359,8 +359,8 @@ if __name__ == '__main__':
                     
                 # time_total.append(time.time()-t_1)
             else:
-                # time.sleep(0.014)
-                time.sleep(0.05)
+                time.sleep(0.014)
+                # time.sleep(0.05)
                 # if global_step % 100== 0:
                 #     print("SPS:", int(100 / (time.time() - SPS_time)))
                 #     SPS_time=time.time()
@@ -378,7 +378,7 @@ if __name__ == '__main__':
                 writer.add_scalar("charts/mean_reward_last_45", mean_r/45, global_step)
                 # writer.add_scalar("charts/mean_cp_last_45", mean_cp/45, global_step)
 
-                if global_step > args.learning_starts and mean_r/45>0.1:
+                if global_step > args.learning_starts:
                     torch.save(actor.state_dict(), f"{wandb.run.dir}/actor_step_{global_step}.pt")
                     # wandb.save(f"{wandb.run.dir}/actor_step_{global_step}.pt", policy="now", base_path=f"{wandb.run.dir}")
                 mean_r=0

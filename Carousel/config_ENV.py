@@ -4,6 +4,6 @@ CONFIG_ENV={
         "action_lb":-6, #action space bounds
         "action_hb":6,
         "bc":'002', #file parameters
-        "date":'20230804',
-        "ms":6,
+        "date":'20230816',
+        "ms":25,
         }

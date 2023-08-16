@@ -26,7 +26,7 @@ import win_precise_time as wpt
 
 ACTUATE=True
 if ACTUATE:
-    Cp_na_=load_mat.load_mat(f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/Cp_phavg.mat")
+    Cp_na_=load_mat.load_mat(f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/Cp_phavg2.mat")
     Cp_na=np.array(Cp_na_['Cp_phavg']['phavg'])
 
 user = getpass.getuser()
@@ -214,11 +214,14 @@ class CustomEnv(gym.Env):
         else:
             # self.reward=(Cp_+0.2)
             # self.reward = max(Cp_,0) / 0.3  # transformation to keep reward roughly between 0 and 1
-            # if phase_<180:
-            #     self.reward=max(-2,(Cp_-Cp_na[phase_]))
-            # else:
-            #     self.reward=max(-2,(Cp_-Cp_na[phase_])*5)
-            self.reward=max(-2,(Cp_-Cp_na[phase_]))
+            # self.reward=max(0,(1+(Cp_-Cp_na[phase_]))/2)
+            if phase_<180:
+                self.reward=max(-2,(Cp_-Cp_na[phase_]))
+            else:
+                self.reward=max(-2,(Cp_-Cp_na[phase_])*5)
+                if self.action_abs>=5:
+                    self.reward+=1
+            # self.reward=max(-2,(Cp_-Cp_na[phase_]))
         self.history_states[self.j] = next_state
         self.history_reward[self.j] = self.reward
         self.history_phase_actions[self.j]=phase_

@@ -87,16 +87,16 @@ if __name__ == '__main__':
     max_action = float(envs.single_action_space.high[0])
     actor = Actor(envs).to(device)
 
-    path="./wandb/run-20230628_135335-lki4uz1i/files"
-    actor.load_state_dict(torch.load(f"{path}/actor_final.pt"))
+    path="./wandb/run-20230816_164742-cnmlto73/files"
+    actor.load_state_dict(torch.load(f"{path}/actor_step_45000.pt"))
     actor.eval()
     obs = envs.reset()
 
-    for global_step in range(10000):
+    for global_step in range(5000):
         t=wpt.time()
         obs=np.array([envs.envs[0].state]) #Read state before deciding action
         
-        actions, _, _ = actor.get_action(torch.Tensor(obs).to(device))
+        _, _, actions = actor.get_action(torch.Tensor(obs).to(device))
         actions = actions.detach().cpu().numpy()
         _, _, dones, infos = envs.step(actions)
         while wpt.time()-t<1/SPS:
