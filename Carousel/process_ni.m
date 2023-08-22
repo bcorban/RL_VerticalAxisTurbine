@@ -156,8 +156,18 @@ function [res param]=process_ni(ms,mpt,folder,is_training)
         res.phavg_list=p;
         res.Cp_phavg=Cp_phavg.phavg;
         param.Cp = mean(Cp_phavg.phavg);
-        save(append(folder,'Cp_phavg2.mat'),"Cp_phavg","Cp_phavg")
+        save(append(folder,'Cp_phavg.mat'),"Cp_phavg","Cp_phavg")
     end
+    if ~ is_training
+        [p Cp_phavg]=phaseavgthis(deg2rad(res.phase),res.Cp,360);
+        % figure;
+        % plot(p,Cp_phavg.phavg)
+        res.phavg_list=rad2deg(p);
+        res.Cp_phavg=Cp_phavg.phavg;
+        [p pitch_phavg]=phaseavgthis(deg2rad(res.phase),rad2deg(res.pitch),360);
+        res.pitch_phavg=pitch_phavg.phavg;
+        param.Cp = mean(Cp_phavg.phavg);
+    end    
     % figure;
     % % 
     % plot(reward);

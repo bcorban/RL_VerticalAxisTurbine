@@ -15,8 +15,11 @@ import torch.nn.functional as F
 import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
+from load_mat import load_mat
 import RL_ 
-
+from scipy.io import savemat
+from config_ENV import CONFIG_ENV
+savemat("CONFIG_ENV.mat",CONFIG_ENV)
 
 
 def parse_args():
@@ -55,7 +58,7 @@ def parse_args():
         help="the batch size of sample from the reply memory")
     parser.add_argument("--learning-starts", type=int, default=5000, #TO CHANGE (was 5e3) !!!
         help="timestep to start learning")
-    parser.add_argument("--policy-lr", type=float, default=5e-4,
+    parser.add_argument("--policy-lr", type=float, default=1e-3,
         help="the learning rate of the policy network optimizer")
     parser.add_argument("--q-lr", type=float, default=1e-3,
         help="the learning rate of the Q network network optimizer")
@@ -165,7 +168,10 @@ if __name__ == '__main__':
         g.GOpen("192.168.255.25 --direct -s ALL")
         
     args = parse_args()
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    bc=CONFIG_ENV["bc"]
+    date=CONFIG_ENV["date"]
+    ms=CONFIG_ENV["ms"]
+    run_name = f"bc{bc} date{date} ms{ms}"
     if args.track:
         import wandb
 
@@ -250,6 +256,11 @@ if __name__ == '__main__':
         device,
         handle_timeout_termination=True,
     )
+    if CONFIG_ENV['pre-fill-RB']:
+        transition=load_mat("./RB.mat")['transition']
+        for transi in range(len(transition['r'])):  
+            rb.add([transition['s'][transi]],[transition['s_next'][transi]], [transition['a'][transi]],[transition['r'][transi]], [False], [{}])
+        
 
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
@@ -378,7 +389,7 @@ if __name__ == '__main__':
                 writer.add_scalar("charts/mean_reward_last_45", mean_r/45, global_step)
                 # writer.add_scalar("charts/mean_cp_last_45", mean_cp/45, global_step)
 
-                if global_step > args.learning_starts:
+                if global_step > args.learning_starts and mean_r/45>0.5:
                     torch.save(actor.state_dict(), f"{wandb.run.dir}/actor_step_{global_step}.pt")
                     # wandb.save(f"{wandb.run.dir}/actor_step_{global_step}.pt", policy="now", base_path=f"{wandb.run.dir}")
                 mean_r=0
@@ -406,7 +417,7 @@ if __name__ == '__main__':
             # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
             obs = next_obs
 
-        except: #if the training is interrupted
+        except KeyboardInterrupt: #if the training is interrupted
             print("training interrupted, saving last policy and q functions")
             torch.save(actor.state_dict(), f"{wandb.run.dir}/actor_final.pt")
             # wandb.save(f"{wandb.run.dir}/actor_final.pt", policy="now", base_path=f"{wandb.run.dir}")

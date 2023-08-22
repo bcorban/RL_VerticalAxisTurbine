@@ -1,13 +1,13 @@
 clear
 close all
 % folder='/home/adminit/RL_VerticalAxisTurbine/Carousel/2023_BC/bc002/raw/20230816/';
-folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc002\raw\20230816\';
+folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc002\raw\20230822\';
 % addpath(genpath('/home/adminit/Documents/MATLAB/fuf'))
 % addpath(genpath('/home/adminit/Documents/MATLAB/app_motioncontrol'))
 % addpath(genpath('/home/adminit/Documents/MATLAB/src_motioncontrol'))
-is_training=false;
-ms=25;
-mpt=1;
+is_training=true;
+ms=12;
+mpt=4;
 [res, param]=process_ni(ms,mpt,folder,is_training);
 load(append(folder,"Cp_phavg.mat"))
 
@@ -99,7 +99,38 @@ if is_training
         plot(phase_vector{k}, reward_vector{k},'color',c(k,:));                % plot Results
     end
     plot(phase_vector{argmax_Cp},reward_vector{argmax_Cp},'color','#5ab4ac',linewidth=2.5);
-    plot(phase_vector{argmax_Cp},5*(Cp_vector{argmax_Cp}-interp1(0:359,Cp_phavg.phavg,phase_vector{argmax_Cp},'linear',0)),'color','blue');
+    % plot(phase_vector{argmax_Cp},5*(Cp_vector{argmax_Cp}-interp1(0:359,Cp_phavg.phavg,phase_vector{argmax_Cp},'linear',0)),'color','blue');
     plot(phase_vector{argmax_reward},reward_vector{argmax_reward},'color','red',linewidth=2.5);
     exportgraphics(gcf,append(folder,sprintf('reward_ms%03dmpt%03d.png',ms,mpt)),'Resolution',300)
+end
+
+if ~ is_training
+    figure;
+    subplot(3,1,1)
+    plot(res.phavg_list,res.pitch_phavg,linewidth=2,color='k')
+    grid("on")
+    xlim([0 360]);
+    ylabel("pitch")
+
+    subplot(3,1,2)
+    hold on
+    plot(res.phavg_list,atand(sind(res.phavg_list)./(param.lambda+cosd(res.phavg_list))),'color','#BDBDBD',linewidth=1.5)
+    plot(res.phavg_list,res.pitch_phavg+atand(sind(res.phavg_list)./(param.lambda+cosd(res.phavg_list))),linewidth=2,color='k')
+    grid("on")
+    xlim([0 360]);
+    hold off
+    ylabel("effective AOA")
+    
+    subplot(3,1,3)
+    hold on
+    plot(0:359,Cp_phavg.phavg,'color','#BDBDBD',linewidth=1.5)
+    plot(res.phavg_list,res.Cp_phavg,linewidth=2,color='k')
+    
+    grid("on")
+    xlim([0 360]);
+    hold off
+    xlabel("phase");
+    ylabel("$C_p$", 'Interpreter', 'latex');
+    exportgraphics(gcf,append(folder,sprintf('policy_results_ms%03dmpt%03d.png',ms,mpt)),'Resolution',300)
+
 end

@@ -16,10 +16,12 @@ from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 import RL_ 
 import win_precise_time as wpt
-
+from scipy.io import savemat
+from config_ENV import CONFIG_ENV
+savemat("CONFIG_ENV.mat",CONFIG_ENV)
 LOG_STD_MAX = 2
 LOG_STD_MIN = -5
-SPS=45
+SPS=40
 
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
@@ -87,12 +89,12 @@ if __name__ == '__main__':
     max_action = float(envs.single_action_space.high[0])
     actor = Actor(envs).to(device)
 
-    path="./wandb/run-20230816_164742-cnmlto73/files"
-    actor.load_state_dict(torch.load(f"{path}/actor_step_45000.pt"))
+    path="./wandb/run-20230822_142402-dfvw34fd/files"
+    actor.load_state_dict(torch.load(f"{path}/actor_final.pt"))
     actor.eval()
     obs = envs.reset()
 
-    for global_step in range(5000):
+    for global_step in range(10000):
         t=wpt.time()
         obs=np.array([envs.envs[0].state]) #Read state before deciding action
         

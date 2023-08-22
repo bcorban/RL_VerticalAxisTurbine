@@ -24,9 +24,9 @@ from multiprocessing import Process, Value, Manager
 from ctypes import c_bool
 import win_precise_time as wpt
 
-ACTUATE=True
+ACTUATE=CONFIG_ENV['ACTUATE']
 if ACTUATE:
-    Cp_na_=load_mat.load_mat(f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/Cp_phavg2.mat")
+    Cp_na_=load_mat.load_mat(f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/Cp_phavg.mat")
     Cp_na=np.array(Cp_na_['Cp_phavg']['phavg'])
 
 user = getpass.getuser()
@@ -203,25 +203,30 @@ class CustomEnv(gym.Env):
         self.terminated.value = True
         self.process.join()
         self.save_data()
+        eng.sharx_off(nargout=0)
         g.GClose()
 
     def get_transition(self):
 
         next_state, Cp_, phase_ = np.array(self.state), self.Cp.value, int(self.phase.value)
-        # print(Cp_)
-        if self.overshoot:
-            self.reward = -2
+        if not ACTUATE:
+            self.reward=0
+
         else:
-            # self.reward=(Cp_+0.2)
-            # self.reward = max(Cp_,0) / 0.3  # transformation to keep reward roughly between 0 and 1
-            # self.reward=max(0,(1+(Cp_-Cp_na[phase_]))/2)
-            if phase_<180:
-                self.reward=max(-2,(Cp_-Cp_na[phase_]))
+            if self.overshoot:
+                self.reward = -1
             else:
-                self.reward=max(-2,(Cp_-Cp_na[phase_])*5)
-                if self.action_abs>=5:
-                    self.reward+=1
-            # self.reward=max(-2,(Cp_-Cp_na[phase_]))
+                # self.reward=(Cp_+0.2)
+                # self.reward = max(Cp_,0) / 0.3  # transformation to keep reward roughly between 0 and 1
+                self.reward=max(0,(1+(Cp_-Cp_na[phase_]))/2)
+                # self.reward=max(0,(1+Cp_)/2)
+                # if phase_<180:
+                #     self.reward=max(-2,(Cp_-Cp_na[phase_]))
+                # else:
+                #     self.reward=max(-2,(Cp_-Cp_na[phase_])*5)
+                #     if self.action_abs>=5:
+                #         self.reward+=1
+                # self.reward=max(-2,(Cp_-Cp_na[phase_]))
         self.history_states[self.j] = next_state
         self.history_reward[self.j] = self.reward
         self.history_phase_actions[self.j]=phase_
@@ -477,7 +482,13 @@ def continuously_read(
         Pflow = 0.5*param['rho']*param['Uinf']**3*param['span']*param['R']*2 
 
         history_Cp[i]=(Pgen-Pmot)/Pflow
+
+        # if i>10:
+        #     Cp.value=np.mean(history_Cp[i-9:i+1])
+        # else:
+        #     Cp.value=history_Cp[i]
         Cp.value=history_Cp[i]
+        
         if math.isnan(Cp.value):
             print("Cp",flush=True)
         
