@@ -46,9 +46,9 @@ def parse_args():
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=150000,
+    parser.add_argument("--total-timesteps", type=int, default=100000,
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(150000),
+    parser.add_argument("--buffer-size", type=int, default=int(100000),
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.97,
         help="the discount factor gamma")

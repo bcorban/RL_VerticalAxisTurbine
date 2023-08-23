@@ -89,12 +89,12 @@ if __name__ == '__main__':
     max_action = float(envs.single_action_space.high[0])
     actor = Actor(envs).to(device)
 
-    path="./wandb/run-20230822_142402-dfvw34fd/files"
+    path="./wandb/run-20230823_180945-dibfzq19/files"
     actor.load_state_dict(torch.load(f"{path}/actor_final.pt"))
     actor.eval()
     obs = envs.reset()
 
-    for global_step in range(10000):
+    for global_step in range(5000):
         t=wpt.time()
         obs=np.array([envs.envs[0].state]) #Read state before deciding action
         

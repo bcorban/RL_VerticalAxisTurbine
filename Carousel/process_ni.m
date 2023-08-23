@@ -25,47 +25,47 @@ function [res param]=process_ni(ms,mpt,folder,is_training)
     % hold on
     %reinterpolate all galil quantities + correct delay
     pitch_is_r=single(interp1(t_g,pitch_is,t_ni,'linear',0));
-    pitch_is_r=pitch_is_r(range(delay:end));
+    pitch_is_r=pitch_is_r(range(1:end-delay+1));
     
     pitch_should_r=single(interp1(t_g,pitch_should,t_ni,'linear',0));
-    pitch_should_r=pitch_should_r(range(delay:end));
+    pitch_should_r=pitch_should_r(range(1:end-delay+1));
     
     pitch_should_r=single(interp1(t_g,pitch_should,t_ni,'linear',0));
-    pitch_should_r=pitch_should_r(range(delay:end));
+    pitch_should_r=pitch_should_r(range(1:end-delay+1));
     
     dpitch_filtered_r=single(interp1(t_g,dpitch_filtered,t_ni,'linear',0));
-    dpitch_filtered_r=dpitch_filtered_r(range(delay:end));
+    dpitch_filtered_r=dpitch_filtered_r(range(1:end-delay+1));
     
     dpitch_noisy_r=single(interp1(t_g,dpitch_noisy,t_ni,'linear',0));
-    dpitch_noisy_r=dpitch_noisy_r(range(delay:end));
+    dpitch_noisy_r=dpitch_noisy_r(range((1:end-delay+1)));
     
     phase_cont_r=single(interp1(t_g,phase_cont,t_ni,'linear',0));
-    phase_cont_r=phase_cont_r(range(delay:end));
+    phase_cont_r=phase_cont_r(range((1:end-delay+1)));
     
     forces_g_r=single(interp1(t_g,forces_g,t_ni,'linear',0));
-    forces_g_r=forces_g_r(range(delay:end),:);
+    forces_g_r=forces_g_r(range((1:end-delay+1)),:);
     
     forces_noisy_g_r=single(interp1(t_g,forces_noisy_g,t_ni,'linear',0));
-    forces_noisy_g_r=forces_noisy_g_r(range(delay:end));
+    forces_noisy_g_r=forces_noisy_g_r(range((1:end-delay+1)));
     
     forces_butter_g_r=single(interp1(t_g,forces_butter_g,t_ni,'linear',0));
-    forces_butter_g_r=forces_butter_g_r(range(delay:end),:);
+    forces_butter_g_r=forces_butter_g_r(range((1:end-delay+1)),:);
     
     force_coeff_g_r=single(interp1(t_g,force_coeff_g,t_ni,'linear',0));
-    force_coeff_g_r=force_coeff_g_r(range(delay:end),:);
+    force_coeff_g_r=force_coeff_g_r(range((1:end-delay+1)),:);
     if is_training
         reward_r=single(interp1(time_action,reward,t_ni,'linear',0));
-        reward_r=reward_r(range(delay:end));
+        reward_r=reward_r(range((1:end-delay+1)));
     
         action_r=single(interp1(time_action,action,t_ni,'linear',0));
-        action_r=action_r(range(delay:end));
+        action_r=action_r(range((1:end-delay+1)));
     end
 
 
     phase_r=mod(phase_cont_r, 360);
     
-    volts=volts_ni(range(1:end-delay+1),:);
-    t=t_ni(range(1:end-delay+1));
+    volts=volts_ni(range(delay:end),:);
+    t=t_ni(range(delay:end));
     
     % add missing parameters
     param_definition;

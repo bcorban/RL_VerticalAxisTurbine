@@ -29,6 +29,9 @@ if ACTUATE:
     Cp_na_=load_mat.load_mat(f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/Cp_phavg.mat")
     Cp_na=np.array(Cp_na_['Cp_phavg']['phavg'])
 
+pitch_profile=np.loadtxt("pitch_optim")
+
+
 user = getpass.getuser()
 if user == "PIVUSER":
     sys.path.append("/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/RL_/envs")
@@ -87,7 +90,7 @@ class CustomEnv(gym.Env):
             self.action_abs = self.pitch_is.value + action  # in degrees
         else:
             self.action_abs=0
-
+        # self.action_abs=np.interp(self.phase.value+20,pitch_profile[:,0],pitch_profile[:,1])
         if self.action_abs > 30:
             self.action_abs = 30
             self.overshoot = True
@@ -98,7 +101,7 @@ class CustomEnv(gym.Env):
         self.history_action[self.j] = action
         self.history_action_abs[self.j] = self.action_abs
         self.history_timestamp_actions[self.j] = wpt.time() - self.t_start.value
-
+        
         g.GCommand(f"PAF={int(self.action_abs*m[1]['ms'])}")
        
         if self.nrot.value <= self.N_transient_effects + 3:  # if during transients effects, do not save samples
@@ -208,7 +211,7 @@ class CustomEnv(gym.Env):
 
     def get_transition(self):
 
-        next_state, Cp_, phase_ = np.array(self.state), self.Cp.value, int(self.phase.value)
+        next_state, Cp_, phase_ = np.array(self.state), self.Cp.value, self.phase.value
         if not ACTUATE:
             self.reward=0
 
@@ -216,9 +219,9 @@ class CustomEnv(gym.Env):
             if self.overshoot:
                 self.reward = -1
             else:
-                # self.reward=(Cp_+0.2)
+                # self.reward=(Cp_)
                 # self.reward = max(Cp_,0) / 0.3  # transformation to keep reward roughly between 0 and 1
-                self.reward=max(0,(1+(Cp_-Cp_na[phase_]))/2)
+                self.reward=max(0,(1+Cp_-np.interp(phase_,list(range(360)),Cp_na))/2)
                 # self.reward=max(0,(1+Cp_)/2)
                 # if phase_<180:
                 #     self.reward=max(-2,(Cp_-Cp_na[phase_]))
@@ -351,10 +354,10 @@ def continuously_read(
         history_phase[i] = galil_output[5] / m[0]["es"] % 360  # In degrees
         history_phase_cont[i] = galil_output[5] / m[0]["es"]  # In degrees
         rot_number.value = int(galil_output[5] / m[0]["es"] // 360)
-        phase_for_reward.value = history_phase[i]
+        
         history_pitch_done[i] = galil_output[6] / m[1]["ms"]  # In degrees
         history_pitch_is[i] = galil_output[7] / m[1]["es"]  # In degrees
-        pitch_is.value = history_pitch_is[i]
+        
         if i > 2:
             # history_dpitch_noisy[i] = (history_pitch_is[i] - history_pitch_is[i-1]) / (history_time[i]-history_time[i-1])
             history_dpitch_noisy[i] = np.gradient(history_pitch_is[i-2:i+1], history_time[i-2:i+1],edge_order=2)[-1]
@@ -473,7 +476,7 @@ def continuously_read(
         
         Pgen = (Ft*param['R']*param['rotf']*2*math.pi) # generated power
 
-        Pmot = abs(history_forces[i,2]*history_dpitch_filtered[i]) # Mz * omega_F 
+        Pmot = abs(history_forces[i,2]*history_dpitch_filtered[i]/180*np.pi) # Mz * omega_F 
         # Pmot=0
         if math.isnan(Pmot):
             print('nan')
@@ -487,8 +490,11 @@ def continuously_read(
         #     Cp.value=np.mean(history_Cp[i-9:i+1])
         # else:
         #     Cp.value=history_Cp[i]
+
+        phase_for_reward.value = history_phase[i]
         Cp.value=history_Cp[i]
-        
+        pitch_is.value = history_pitch_is[i]
+
         if math.isnan(Cp.value):
             print("Cp",flush=True)
         

@@ -4,7 +4,7 @@ CONFIG_ENV={
         "action_lb":-6, #action space bounds
         "action_hb":6,
         "bc":'002', #file parameters
-        "date":'20230822',
+        "date":'20230823',
         "ms":12,
         "ACTUATE":True,
         "pre-fill-RB":False,
