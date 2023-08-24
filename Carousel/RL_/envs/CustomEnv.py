@@ -83,7 +83,7 @@ class CustomEnv(gym.Env):
 
     def step(
         self, action
-    ):  # This method performs one step, i.e. one pitching command, and returns the next state and reward
+    ):  # This method performs one step, i.e. one pitching command, 
         
         self.overshoot = False
         if ACTUATE:
@@ -126,7 +126,7 @@ class CustomEnv(gym.Env):
         seed: Optional[int] = None,
         return_info: bool = False,
         options: Optional[dict] = None,
-    ):  # This method is called at the begining of each episode
+    ):  # This method is called at the begining of each episode, it launches the parallel process
         
         if self.episode_counter.value >= 1:  # if not first episode
             print("reset")
@@ -204,12 +204,13 @@ class CustomEnv(gym.Env):
         print("Closing environment")
 
         self.terminated.value = True
-        self.process.join()
+        self.process.join() #wait for parallel process to end
         self.save_data()
-        eng.sharx_off(nargout=0)
+        eng.sharx_off(nargout=0) #turns off the water channel
         g.GClose()
 
-    def get_transition(self):
+    def get_transition(self): #get the reward and next state independantly from the step method, in order to get them after a delay.
+        #REWARD DEFINITION IN THIS METHOD
 
         next_state, Cp_, phase_ = np.array(self.state), self.Cp.value, self.phase.value
         if not ACTUATE:
@@ -217,10 +218,13 @@ class CustomEnv(gym.Env):
 
         else:
             if self.overshoot:
-                self.reward = -1
+                self.reward = 0
             else:
                 # self.reward=(Cp_)
                 # self.reward = max(Cp_,0) / 0.3  # transformation to keep reward roughly between 0 and 1
+                # if phase_<200:
+                #     self.reward=self.reward=max(0,(Cp_-np.interp(phase_,list(range(360)),Cp_na))/5)
+                # else:
                 self.reward=max(0,(1+Cp_-np.interp(phase_,list(range(360)),Cp_na))/2)
                 # self.reward=max(0,(1+Cp_)/2)
                 # if phase_<180:
@@ -230,6 +234,7 @@ class CustomEnv(gym.Env):
                 #     if self.action_abs>=5:
                 #         self.reward+=1
                 # self.reward=max(-2,(Cp_-Cp_na[phase_]))
+
         self.history_states[self.j] = next_state
         self.history_reward[self.j] = self.reward
         self.history_phase_actions[self.j]=phase_
@@ -240,7 +245,7 @@ class CustomEnv(gym.Env):
 
 def continuously_read(
     terminated, state, Cp, rot_number, pitch_is, reading_bool, episode_counter, t_start, phase_for_reward
-):
+): #parallel process which reads at a higher rate the galil outputs to smooth them (~500Hz) 
     N = 1000000
     reading_bool.value = False
 
@@ -308,7 +313,6 @@ def continuously_read(
 
     eng.start_lc(nargout=0)  # Start the loadcell
     t_start.value = wpt.time()
-    # t_start.value=eng.workspace['t_start']
 
 
     g.GCommand("SHE")
@@ -321,7 +325,6 @@ def continuously_read(
     
     # --------------------Wait for 3 rotations--------------------------------
     while float(g.GCommand("MG _TPE")) / m[0]["es"] // 360 < 3:
-        # time.sleep(0.001)
         pass
 
     # ------------------------------------------------------------------------
@@ -420,9 +423,6 @@ def continuously_read(
                 if np.all(history_forces_noisy_[i - ws_f : i + 1, l] == med[l]):
 
                     history_forces_noisy_[i - ws_f : i + 1, l] = history_forces_noisy[i - ws_f : i + 1, l]
-                    # print(f'flatlined {l}',flush=True)
-                    # i_list.append(i)
-
 
 
             # filtering step for forces
@@ -486,10 +486,13 @@ def continuously_read(
 
         history_Cp[i]=(Pgen-Pmot)/Pflow
 
+
+        #get a mean Cp value over a window for the rezward (not recommanded)
         # if i>10:
         #     Cp.value=np.mean(history_Cp[i-9:i+1])
         # else:
         #     Cp.value=history_Cp[i]
+
 
         phase_for_reward.value = history_phase[i]
         Cp.value=history_Cp[i]
@@ -506,7 +509,7 @@ def continuously_read(
             + param["Finertial"]
         ) / param["f_denom"]
 
-        # state[:2] = history_coeff[i]  # update state
+        # update state
         state[0] = (history_coeff[i,0] + 0.3)/1.1 #Normalize state (Ct+min_Ct_non_actuated)/max-min
         state[1] = (history_coeff[i,1] + 1.8)/6
 

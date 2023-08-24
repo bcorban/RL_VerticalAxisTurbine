@@ -1,0 +1,16 @@
+Organisation :
+2 main files : sac_continuous_action for the cleanrl implementation of the SAC algorithm for training
+and RL_/envs/CustomEnv where all the interaction with the turbine is done (loads reading, pitch command, motor E start and stop...)
+
+test_policy allows to evaluate a trained policy
+process_main processes the data (enter folder,ms,mpt and if it is a training or evaluation run)
+
+Protocole:
+Always start the day by a quick_home, then a non actuated case :
+for that set ACTUATE to False in config_ENV.py and the number of total timestep in sac_continuous_action to 5000 and learning_starts to 1000 for example.
+then sharx_on(RPM) in matlab, and then launch sac_continuous_action.py. then postprocess this non actuated run with process main (has to be ms001 so that it exports a Cp_phavg.mat used in some rewards for training)
+
+For a training run, set the right reward in the get_transition method, the right parameters in sac_continuous_action
+
+
+Baptiste Corban 

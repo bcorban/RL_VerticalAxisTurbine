@@ -1,13 +1,13 @@
 clear
 close all
 % folder='/home/adminit/RL_VerticalAxisTurbine/Carousel/2023_BC/bc002/raw/20230816/';
-folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc002\raw\20230823\';
+folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc002\raw\20230824\';
 % addpath(genpath('/home/adminit/Documents/MATLAB/fuf'))
 % addpath(genpath('/home/adminit/Documents/MATLAB/app_motioncontrol'))
 % addpath(genpath('/home/adminit/Documents/MATLAB/src_motioncontrol'))
 is_training=true;
-ms=11;
-mpt=3;
+ms=13;
+mpt=1;
 [res, param]=process_ni(ms,mpt,folder,is_training);
 load(append(folder,"Cp_phavg.mat"))
 

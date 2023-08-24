@@ -46,19 +46,19 @@ def parse_args():
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=100000,
+    parser.add_argument("--total-timesteps", type=int, default=150000,  #TOTAL TIMESTEPS
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(100000),
+    parser.add_argument("--buffer-size", type=int, default=int(150000),
         help="the replay memory buffer size")
-    parser.add_argument("--gamma", type=float, default=0.97,
+    parser.add_argument("--gamma", type=float, default=0.98, #GAMMA PARAMETER FOR THE Q VALUES
         help="the discount factor gamma")
     parser.add_argument("--tau", type=float, default=0.005,
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=512,
         help="the batch size of sample from the reply memory")
-    parser.add_argument("--learning-starts", type=int, default=5000, #TO CHANGE (was 5e3) !!!
+    parser.add_argument("--learning-starts", type=int, default=5000, #HAS TO BE HIGHER THAN THE BATCH SIZE
         help="timestep to start learning")
-    parser.add_argument("--policy-lr", type=float, default=1e-3,
+    parser.add_argument("--policy-lr", type=float, default=5e-4,
         help="the learning rate of the policy network optimizer")
     parser.add_argument("--q-lr", type=float, default=1e-3,
         help="the learning rate of the Q network network optimizer")
@@ -155,18 +155,15 @@ class Actor(nn.Module):
 
 if __name__ == '__main__':
 # -----------------Connect to galil and set parameters ----------------------
-    UTD=1
+    UTD=1 #Update to data ratio (higher=less steps per second)
 
     
     import getpass
     user=getpass.getuser()
     g = gclib.py()
-    if user=='PIVUSER':
-        g.GOpen("192.168.255.200 --direct -s ALL")
 
-    elif user == 'adminit':
-        g.GOpen("192.168.255.25 --direct -s ALL")
-        
+    g.GOpen("192.168.255.200 --direct -s ALL")
+
     args = parse_args()
     bc=CONFIG_ENV["bc"]
     date=CONFIG_ENV["date"]
@@ -260,7 +257,8 @@ if __name__ == '__main__':
         transition=load_mat("./RB.mat")['transition']
         for transi in range(len(transition['r'])):  
             rb.add([transition['s'][transi]],[transition['s_next'][transi]], [transition['a'][transi]],[transition['r'][transi]], [False], [{}])
-        
+
+                
 
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
@@ -278,10 +276,11 @@ if __name__ == '__main__':
 
     for global_step in range(args.total_timesteps):
         try:
-            # print(global_step)
+
             #ALGO LOGIC: put action logic here
             
             obs=np.array([envs.envs[0].state]) #Read state before deciding action
+
             if global_step < args.learning_starts:
                 # if global_step<200:
                 #     actions=np.array([0])
@@ -292,14 +291,14 @@ if __name__ == '__main__':
                 actions = actions.detach().cpu().numpy()
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            # t_1=time.time()
+
             _, _, dones, infos = envs.step(actions)
 
             # ALGO LOGIC: training loop begin--------------------------------------------------
             if global_step > args.learning_starts:
                 for _ in range(UTD):
                     data = rb.sample(args.batch_size)
-                    # print(data.observations)
+
                     with torch.no_grad():
                         next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
                         qf1_next_target = qf1_target(data.next_observations, next_state_actions)
@@ -322,15 +321,13 @@ if __name__ == '__main__':
                         args.policy_frequency
                     ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
 
-                        # update+=1
-                        # print("update")
-                        
+
                         pi, log_pi, _ = actor.get_action(data.observations)
                         qf1_pi = qf1(data.observations, pi)
                         qf2_pi = qf2(data.observations, pi)
                         min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
-                        # actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
-                        actor_loss = ((max(alpha,0.005) * log_pi) - min_qf_pi).mean()
+                        # actor_loss = ((alpha * log_pi) - min_qf_pi).mean() #original SACv2 implementation
+                        actor_loss = ((max(alpha,0.005) * log_pi) - min_qf_pi).mean() #Quick fix of the SAC v2 version to force exploration
                         actor_optimizer.zero_grad()
                         actor_loss.backward()
                         actor_optimizer.step()
@@ -352,8 +349,7 @@ if __name__ == '__main__':
                         target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
                     for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
                         target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
-                # print(f"\n updating policy takes {time.time()-t_3}s\n")
-                # time_2.append(time.time()-t_3)
+
                 
                 if global_step % 100== 0 and global_step>0:
                     writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
@@ -367,14 +363,10 @@ if __name__ == '__main__':
                     SPS_time=time.time()
                     if args.autotune:
                         writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
-                    
-                # time_total.append(time.time()-t_1)
+
             else:
                 time.sleep(0.014)
-                # time.sleep(0.05)
-                # if global_step % 100== 0:
-                #     print("SPS:", int(100 / (time.time() - SPS_time)))
-                #     SPS_time=time.time()
+
             
             #-------------------Training loop end------------------------------------
             
@@ -383,17 +375,14 @@ if __name__ == '__main__':
 
             # TRY NOT TO MODIFY: record rewards for plotting purposes
             mean_r+=rewards[0]
-            # mean_cp+=rewards[0]-0.2
 
             if global_step%45==0:
                 writer.add_scalar("charts/mean_reward_last_45", mean_r/45, global_step)
-                # writer.add_scalar("charts/mean_cp_last_45", mean_cp/45, global_step)
-
+             
                 if global_step > args.learning_starts and mean_r/45>0.5:
                     torch.save(actor.state_dict(), f"{wandb.run.dir}/actor_step_{global_step}.pt")
-                    # wandb.save(f"{wandb.run.dir}/actor_step_{global_step}.pt", policy="now", base_path=f"{wandb.run.dir}")
                 mean_r=0
-                # mean_cp=0
+
 
 
             for info in infos:
@@ -411,7 +400,7 @@ if __name__ == '__main__':
                     real_next_obs[idx] = infos[idx]["terminal_observation"]
 
             if not dones[0] and not infos[0]['transient']: #if episode not terminated and not in transient rotations add to replay buffer 
-                # print("add")
+
                 rb.add(obs, real_next_obs, actions, rewards, dones, infos)
 
             # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
@@ -439,13 +428,4 @@ if __name__ == '__main__':
     torch.save(log_alpha, f"{wandb.run.dir}/log_alpha_final.pt")
     # wandb.save(f"{wandb.run.dir}/log_alpha_final.pt", base_path=f"{wandb.run.dir}")
 
-    # print("Mean time for sampling transition")
-    # print(np.mean(np.array(time_1)))
-    # print("Mean time for updating policy")
-    # print(np.mean(np.array(time_2)))
-    # print("Mean time for whole loop")
-    # print(np.mean(np.array(time_total)))
-    # print("SPS")
-    # print(SPS_list) 
-
-    g.GClose()
+    g.GClose() 
