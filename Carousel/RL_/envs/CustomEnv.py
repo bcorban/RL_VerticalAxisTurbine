@@ -225,7 +225,7 @@ class CustomEnv(gym.Env):
                 # if phase_<200:
                 #     self.reward=self.reward=max(0,(Cp_-np.interp(phase_,list(range(360)),Cp_na))/5)
                 # else:
-                self.reward=max(0,(1+Cp_-np.interp(phase_,list(range(360)),Cp_na))/2)
+                self.reward=max(0,(1+Cp_-np.interp(phase_,np.arange(360),Cp_na))/2)
                 # self.reward=max(0,(1+Cp_)/2)
                 # if phase_<180:
                 #     self.reward=max(-2,(Cp_-Cp_na[phase_]))

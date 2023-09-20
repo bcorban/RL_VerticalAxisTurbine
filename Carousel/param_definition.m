@@ -73,9 +73,9 @@ CDnaca0 = 0.02;
 param.F0 = (param.Uinf).^2*0.5*param.rho*(param.Csp*param.spr^2*pi*2+CDnaca0*param.c*param.span);
 
 %F motor parameters
-param.ACF = 1.5
-param.SPF = 10000000
-param.KSF = 0.5  # Between 0.25 (low smoothing) and 64 (high smoothing)
+param.ACF = 1.5;
+param.SPF = 10000000;
+param.KSF = 0.5;  % Between 0.25 (low smoothing) and 64 (high smoothing)
 
 % Calibration matrices. 
 % Notevariable: I keep only the positive matrix as I'm not interested in Mx and My.

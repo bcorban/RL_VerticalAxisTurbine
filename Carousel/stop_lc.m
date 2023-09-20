@@ -2,7 +2,7 @@ lc.stopLC()
 volts_ni = lc.data;
 t_ni = lc.time;
 load('CONFIG_ENV.mat')
-file_folder=append(path, bc, '/raw/', date);
+file_folder=fullfile(path, sprintf('bc%s', bc), 'raw', date);
 
 % mpt: just count the number of file ms00*mpt* and add +1.
 mpt = fix(length(dir(fullfile(file_folder,sprintf("ms%03d*", ms))))/3) + 1;

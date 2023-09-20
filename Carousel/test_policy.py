@@ -88,9 +88,8 @@ if __name__ == '__main__':
 
     max_action = float(envs.single_action_space.high[0])
     actor = Actor(envs).to(device)
-
-    path="./wandb/run-20230823_180945-dibfzq19/files"
-    actor.load_state_dict(torch.load(f"./actor_offline.pt"))
+    path="./wandb/run-20230920_151223-4h2oj3dm/files"
+    actor.load_state_dict(torch.load(os.path.join(path,'actor_step_174375.pt')))  # "{path}./actor_step_174375.pt"))
     actor.eval()
     obs = envs.reset()
 

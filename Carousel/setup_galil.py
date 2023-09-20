@@ -1,9 +1,9 @@
 def setup_g(g,param): #sets up somme motor and galil parameters
     c = g.GCommand
     # Increase the acceleration and deceleration of the motor
-    ACF = param["ACF"]
-    SPF = param["SPF"]
-    KSF = param["KSF"]  
+    ACF = 1.5  # param["ACF"]
+    SPF = 1000000  # param["SPF"]
+    KSF = 0.5  # param["KSF"]  
     
     c(f"ACF={round(256000 * ACF)}")
     c(f"DCF={round(256000 * ACF)}")

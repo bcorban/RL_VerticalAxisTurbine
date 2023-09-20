@@ -12,5 +12,65 @@ then sharx_on(RPM) in matlab, and then launch sac_continuous_action.py. then pos
 
 For a training run, set the right reward in the get_transition method, the right parameters in sac_continuous_action
 
+Process
+-------
 
-Baptiste Corban 
+UNACTUATED CASE:
+----------------
+
+- Setup parameters in config_ENV.py
+  Change the parameters following the requirements for the experiment.
+
+- Setup sac_continuous_action.py
+  - Parser:
+    --total-timesteps: 50 iterations corresponds roughly to 1 rotation. Usually set to 5000 (100 rotations) for unactuated.
+    --learning-start: How many iterations completed before learning starts. Usually set to 5000. Not important for unactuated.
+
+- Run sac_continuous_action.py. Ignore the warnings.
+
+- Do a post-processing step to create a required file.
+  - In process_main.m: change:
+    - folder
+    - ms
+    - mpt
+    This creates the reference file that will be used for the reward.
+
+
+ACTUATED CASE:
+--------------
+
+- In convig_ENV.py, change:
+  - ms
+  - Set ACTUATE to True
+
+- In sac_continuous_action.py
+  --total-timesteps: 200000 (~1.5hr)
+  --buffer-size: set to total-timesteps
+  --learning-start: 5000
+
+- In CustomEnv.py
+  - Change the reward in the method get_transition()
+
+- Run sac_continuous_action.py. Ignore the warnings.
+
+- run process_main.m from matlab, with the correct ms and mpt. Change is_training to true.
+
+REPLAY POLICY:
+--------------
+
+- Find latest policy:
+  - In C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\wandb\run-LAST RUN\files select an actor (.pt file)
+
+- In test_policy.py:
+  - In __main__: Change path and actor name
+
+- In config_ENV.py:
+  - Change the ms to a greater value to avoid overwritting.
+
+- run test_policy.py
+
+- run process_main.m from matlab, with the correct ms and mpt. Change is_training to false.
+
+
+
+Baptiste Corban and Daniel Fernex
