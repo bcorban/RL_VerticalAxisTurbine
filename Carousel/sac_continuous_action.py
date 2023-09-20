@@ -379,7 +379,7 @@ if __name__ == '__main__':
             if global_step%45==0:
                 writer.add_scalar("charts/mean_reward_last_45", mean_r/45, global_step)
              
-                if global_step > args.learning_starts and mean_r/45>0.5:
+                if global_step > args.learning_starts:
                     torch.save(actor.state_dict(), f"{wandb.run.dir}/actor_step_{global_step}.pt")
                 mean_r=0
 

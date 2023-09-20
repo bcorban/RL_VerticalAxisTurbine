@@ -70,7 +70,7 @@ class CustomEnv(gym.Env):
         )
 
         self.observation_space = Box(
-            low=np.array([-5, -5, -5]), high=np.array([5, 5, 5])
+            low=np.array([-5, -5, -5, -1]), high=np.array([5, 5, 5, 1])
         )
 
         self.N_transient_effects = CONFIG_ENV[
@@ -136,7 +136,7 @@ class CustomEnv(gym.Env):
         self.overshoot=False
         self.j = 0  # action counter
         self.episode_counter.value += 1
-        self.history_states = np.zeros((100000, 3))
+        self.history_states = np.zeros((100000, 4))
         self.history_action = np.zeros(100000)
         self.history_action_abs = np.zeros(100000)
         self.history_reward = np.zeros(100000)
@@ -151,7 +151,7 @@ class CustomEnv(gym.Env):
         self.t_start=Value('d',0)
         manager = Manager()
         self.state = manager.list()
-        self.state[:] = [0, 0, 0]
+        self.state[:] = [0, 0, 0, 0]
 
         self.process = Process(
             target=continuously_read,
@@ -189,7 +189,7 @@ class CustomEnv(gym.Env):
     def save_data(self):  # export data from an episode into a .mat file
         print("saving data...")
         if user == "PIVUSER":
-            path = f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms{'{:03}'.format(CONFIG_ENV['ms'])}mpt{'{:03}'.format(self.episode_counter.value)}_2.mat"
+            path = f"{CONFIG_ENV['path']}/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms{'{:03}'.format(CONFIG_ENV['ms'])}mpt{'{:03}'.format(self.episode_counter.value)}_2.mat"
             dict = {
                 "state": self.history_states[:self.j],
                 "action": self.history_action[:self.j],
@@ -292,7 +292,7 @@ def continuously_read(
     g.GCommand("DEF=0")  # force encoder signal to 0 after homing 
     
     # Reset acceleration and speed after the homing
-    setup_g(g)
+    setup_g(g,param)
 
     # ------------------------------------------------------------------------
     # -------------------------MEASURE OFFSET---------------------------------
@@ -520,7 +520,7 @@ def continuously_read(
                 history_time[i-npast:i], history_time[i] - param["rotT"] / 5, side="left"
             )
             state[2] = (history_coeff[i-npast + idx, 1]+1.8)/6  # add Cr(t-T/5) normalized
-
+        state[3]=(history_pitch_is[i]+30)/60
         i += 1  # update counter
 
     print("stop reading", flush=True)
@@ -535,7 +535,7 @@ def continuously_read(
     # ------------SAVE DATA-------------------------------------------
     eng.stop_lc(nargout=0)  # stop loadcell
     if user == "PIVUSER":
-        path = f"2023_BC/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms{'{:03}'.format(CONFIG_ENV['ms'])}mpt{'{:03}'.format(episode_counter.value)}_1.mat"
+        path = f"{CONFIG_ENV['path']}/bc{CONFIG_ENV['bc']}/raw/{CONFIG_ENV['date']}/ms{'{:03}'.format(CONFIG_ENV['ms'])}mpt{'{:03}'.format(episode_counter.value)}_1.mat"
         dict = {
             "param": param,
             "t_g": history_time[:i-1],

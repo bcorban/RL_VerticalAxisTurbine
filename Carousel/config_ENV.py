@@ -6,6 +6,7 @@ CONFIG_ENV={
         "N_transient_effects":1, #start applying policy but wait N rotations before sampling transitions
         "action_lb":-6, #action space bounds
         "action_hb":6,
+        "path":"/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/2023_BC",
         "bc":'002', #file parameters
         "date":'20230824',
         "ms":13, 
