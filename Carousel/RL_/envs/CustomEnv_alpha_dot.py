@@ -61,16 +61,16 @@ elif user == "adminit":
     print(g.GInfo())
 
 
-class CustomEnv(gym.Env):
+class CustomEnv_dot(gym.Env):
     def __init__(self) -> None:  # This method is called when creating the environment
-        super(CustomEnv, self).__init__()
+        super(CustomEnv_dot, self).__init__()
         # self.dict_env = dict_env
         self.action_space = Box(
             low=CONFIG_ENV["action_lb"], high=CONFIG_ENV["action_hb"], shape=(1,)
         )
 
         self.observation_space = Box(
-            low=np.array([-5, -5, -5, -1]), high=np.array([5, 5, 5, 1])
+            low=np.array([-5, -5, -5, -1, -1.5]), high=np.array([5, 5, 5, 1, 1.5])
         )
 
         self.N_transient_effects = CONFIG_ENV[
@@ -137,8 +137,8 @@ class CustomEnv(gym.Env):
         self.overshoot=False
         self.j = 0  # action counter
         self.episode_counter.value += 1
-        self.history_states = np.zeros((100000, 4))
-        self.history_next_states = np.zeros((100000, 4))
+        self.history_states = np.zeros((100000, 5))
+        self.history_next_states = np.zeros((100000, 5))
         self.history_action = np.zeros(100000)
         self.history_action_abs = np.zeros(100000)
         self.history_reward = np.zeros(100000)
@@ -153,7 +153,7 @@ class CustomEnv(gym.Env):
         self.t_start=Value('d',0)
         manager = Manager()
         self.state = manager.list()
-        self.state[:] = [0, 0, 0, 0]
+        self.state[:] = [0, 0, 0, 0, 0]
 
         self.process = Process(
             target=continuously_read,
@@ -523,7 +523,9 @@ def continuously_read(
                 history_time[i-npast:i], history_time[i] - param["rotT"] / 5, side="left"
             )
             state[2] = (history_coeff[i-npast + idx, 1]+1.8)/6  # add Cr(t-T/5) normalized
-        state[3]=(history_pitch_is[i]+30)/60
+        state[3]=(history_pitch_is[i]+30)/60 #add current pitch
+        state[4]=(history_dpitch_filtered[i]+250)/500 #add current pitch rate
+        
         i += 1  # update counter
 
     print("stop reading", flush=True)

@@ -168,15 +168,18 @@ plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,1]*std[1]+mean[
 plt.plot((np.array(list(range(len(hist[:,0]))))/int(T/tau))[:],np.array(pitch_from_action_list)*std[1]+mean[1],'-',color='black',alpha=0.5)
 plt.xlabel("$t/T$")
 plt.grid()
+plt.savefig('1.eps')
 
 plt.figure()
 plt.ylabel("$C_p$")
 plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,2]*std[2]+mean[2],'o-',color='black')
 plt.xlabel("$t/T$")
 plt.grid()
+plt.savefig('2.eps')
 
 plt.figure()
 plt.title("phase")
 plt.plot(np.array(list(range(len(hist[:,0]))))/int(T/tau),hist[:,0]*std[0]+mean[0],'o-')
 plt.xlabel("$t/T$")
 plt.show()
+plt.savefig('3.eps')
