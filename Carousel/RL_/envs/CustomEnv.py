@@ -9,7 +9,7 @@ import sys
 from typing import Optional
 # import torch
 import math
-# import gclib
+import gclib
 import matlab.engine
 # import time1
 from scipy import signal
@@ -22,7 +22,7 @@ import getpass
 # import threading
 from multiprocessing import Process, Value, Manager
 from ctypes import c_bool
-# import win_precise_time as wpt
+import win_precise_time as wpt
 
 ACTUATE=CONFIG_ENV['ACTUATE']
 if ACTUATE:
@@ -82,9 +82,9 @@ class CustomEnv(gym.Env):
         print("init")
 
     def step(
-        self, action, state
+        self, act_state
     ):  # This method performs one step, i.e. one pitching command, 
-        
+        action,state=act_state[0],act_state[1]
         self.overshoot = False
         if ACTUATE:
             self.action_abs = self.pitch_is.value + action  # in degrees
@@ -297,8 +297,12 @@ def continuously_read(
     # Reset acceleration and speed after the homing
     setup_g(g,param)
 
+
     # ------------------------------------------------------------------------
     # -------------------------MEASURE OFFSET---------------------------------
+    eng.start_lc(nargout=0)  # Start the loadcell
+    t_start.value = wpt.time()
+
     print("Offset")
     t_offset_pause = 5
     tic = wpt.time()
@@ -312,10 +316,7 @@ def continuously_read(
     offset = np.mean(offset_volts[:k], 0)
     # ------------------------------------------------------------------------
 
-    # ----------------------------START MOTOR AND LOADCELL--------------------
-
-    eng.start_lc(nargout=0)  # Start the loadcell
-    t_start.value = wpt.time()
+    # ----------------------------START MOTOR--------------------
 
 
     g.GCommand("SHE")

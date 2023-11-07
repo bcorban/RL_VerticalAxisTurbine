@@ -335,7 +335,7 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
 
-            _, _, dones, infos = envs.step(actions,obs[0])
+            _, _, dones, infos = envs.step([[actions[0],obs[0]]])
 
             # ALGO LOGIC: training loop begin--------------------------------------------------
             if global_step > args.learning_starts:

@@ -26,8 +26,10 @@ function forces = compute_forces_lc4(volts, R4, param, filter, remove_outliers)
         for i =1:size(forces, 2)
             
             % with filtfilt
+            % figure
+            % plot(forces(:,i)), hold on
             forces(:,i) = dfilter(double(forces(:,i)), 1000, 30, 3);  % low-pass filter at 30Hz
-
+            % plot(forces(:,i))
             % with filterAR
             % COFreq = 1/30; % 1/cut-off frequency for filter
             % fs = 1000; % acquisition frequency of loads

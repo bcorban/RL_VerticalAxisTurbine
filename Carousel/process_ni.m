@@ -74,11 +74,12 @@ function [res param]=process_ni(ms,mpt,folder,is_training)
     param.Fsp=param.Csp .* 0.5 .* param.rho .* (param.Ueff).^2 .* param.spr^2*pi*2;
     param.denom=param.f_denom;
     % number of rotation for postprocessing
-    param.n_rot_trans = 0;
+    param.n_rot_trans = 20;
     param.n_rot = 1000;
     
     % Remove offset
-    volts=volts+v_offset_g;
+    % volts=volts+v_offset_g;
+    volts=volts-mean(volts(1:5000,:));
     
     % compute forces
     forces = compute_forces_lc4(volts, param.R4, param, true, true);
