@@ -1,7 +1,10 @@
 clear
 close all
 % folder='/home/adminit/RL_VerticalAxisTurbine/Carousel/2023_BC/bc002/raw/20230816/';
-folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc005\raw\20231103\';
+% folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc005\raw\20231103\';
+folder='/Volumes/PortableSSD/Archives_EPFL/2023_BC/bc004/raw/20230920/';
+addpath(genpath('/Users/baptiste/Desktop/EPFL/RL_VerticalAxisTurbine/daniel/'));
+%% 
 % addpath(genpath('/home/adminit/Documents/MATLAB/fuf'))
 % addpath(genpath('/home/adminit/Documents/MATLAB/app_motioncontrol'))
 % addpath(genpath('/home/adminit/Documents/MATLAB/src_motioncontrol'))
@@ -78,7 +81,7 @@ grid
 
 
 % % % % % % % % % % % % % % % % % 
-d=readtable('pitch_optim');
+% d=readtable('pitch_optim');
 figure;
 hold on
 for k = 1:numel(phase_vector)
@@ -124,31 +127,41 @@ end
 
 if ~ is_training
     figure;
-    subplot(3,1,1)
+    ax1=subplot(3,1,1)
     plot(res.phavg_list,res.pitch_phavg,linewidth=2,color='k')
     grid("on")
     xlim([0 360]);
-    ylabel("pitch")
+    xticks([0 90 180 270 360]);
+    xticklabels([])
+    ylabel("action $\alpha$", 'Interpreter', 'latex',fontsize=14);
 
-    subplot(3,1,2)
+    ax2=subplot(3,1,2)
     hold on
     plot(res.phavg_list,atand(sind(res.phavg_list)./(param.lambda+cosd(res.phavg_list))),'color','#BDBDBD',linewidth=1.5)
     plot(res.phavg_list,res.pitch_phavg+atand(sind(res.phavg_list)./(param.lambda+cosd(res.phavg_list))),linewidth=2,color='k')
     grid("on")
     xlim([0 360]);
+    xticks([0 90 180 270 360]);
+    xticklabels([])
     hold off
-    ylabel("effective AOA")
+    ylabel("effective $AOA$", 'Interpreter', 'latex')
     
-    subplot(3,1,3)
+    ax3=subplot(3,1,3)
     hold on
     plot(0:359,Cp_phavg.phavg,'color','#BDBDBD',linewidth=1.5)
     plot(res.phavg_list,res.Cp_phavg,linewidth=2,color='k')
     
     grid("on")
     xlim([0 360]);
+    xticks([0 90 180 270 360]);
+
     hold off
-    xlabel("phase");
-    ylabel("$C_p$", 'Interpreter', 'latex');
+    xlabel("$\theta$", 'Interpreter', 'latex',fontsize=14);
+    ylabel("$C_p$", 'Interpreter', 'latex',fontsize=14);
+    legend('No action', 'RL', 'Interpreter', 'latex',fontsize=14);
+    
+    set(ax2, 'box', 'on', 'Visible', 'on')
+    set(ax3, 'box', 'on', 'Visible', 'on')
     exportgraphics(gcf,append(folder,sprintf('policy_results_ms%03dmpt%03d.png',ms,mpt)),'Resolution',300)
 
 end
