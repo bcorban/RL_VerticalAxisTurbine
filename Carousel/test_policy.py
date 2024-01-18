@@ -102,7 +102,9 @@ if __name__ == '__main__':
         else:
             _, _, actions = actor.get_action(torch.Tensor(obs).to(device))
             actions = actions.detach().cpu().numpy()
+            
         _, _, dones, infos = envs.step([[actions,obs[0]]])
+       #  _, _, dones, infos = envs.step([[actions[0],obs[0]]])
         while wpt.time()-t<1/SPS:
             pass
     envs.close()

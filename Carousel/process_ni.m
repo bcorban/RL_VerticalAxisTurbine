@@ -79,6 +79,10 @@ function [res param]=process_ni(ms,mpt,folder,is_training)
     % Remove offset
     % volts=volts+v_offset_g;
     volts=volts-mean(volts_ni(1:5000,:));
+
+    % ANCIEN
+%     volts=volts+v_offset_g;
+%     volts=volts-mean(volts(1:5000,:));
     
     % compute forces
     forces = compute_forces_lc4(volts, param.R4, param, true, true);
@@ -88,9 +92,9 @@ function [res param]=process_ni(ms,mpt,folder,is_training)
     % NOTE THAT raw.pitch is ALREADY IN RADIAN!
     pitch(isnan(pitch)) = 0;  % Set nans to 0, otherwise filterAR will output only nans.
     pitch = dfilter(pitch, 1000, 30, 3);
-    dpitch = gradient2(pitch, t);
+    dpitch = dgradient(pitch, t);
     dpitch =  dfilter(dpitch, 1000, 30, 3);
-    ddpitch = gradient2(dpitch, t);
+    ddpitch = dgradient(dpitch, t);
     ddpitch =  dfilter(ddpitch, 1000, 30, 3);
     
     % Compute the loads in the carousel reference
@@ -156,7 +160,15 @@ function [res param]=process_ni(ms,mpt,folder,is_training)
         res.phavg_list=p;
         res.Cp_phavg=Cp_phavg.phavg;
         param.Cp = mean(Cp_phavg.phavg);
-        save(append(folder,'Cp_phavg.mat'),"Cp_phavg","Cp_phavg")
+        save(append(folder,'Cp_phavg_.mat'),"Cp_phavg","Cp_phavg")
+        
+        [p Cr_phavg]=phaseavgthis(deg2rad(res.phase),res.Cr,360);
+        res.Cr_phavg=Cr_phavg.phavg;
+        save(append(folder,'Cr_phavg_.mat'),"Cr_phavg","Cr_phavg")
+        save(append(folder,'phase_phavg_.mat'),"p","p")
+        [p Ct_phavg]=phaseavgthis(deg2rad(res.phase),res.Ct,360);
+        res.Ct_phavg=Ct_phavg.phavg;
+        save(append(folder,'Ct_phavg_.mat'),"Ct_phavg","Ct_phavg")
     end
     if ~ is_training
         [p Cp_phavg]=phaseavgthis(deg2rad(res.phase),res.Cp,360);
