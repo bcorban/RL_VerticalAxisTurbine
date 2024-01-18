@@ -11,7 +11,6 @@ function [res param]=process_ni(ms,mpt,folder,is_training)
     % hold on
     % plot(t_g,pitch_is);
     % hold off
-
     % Resample galil volts at 1kHz
     volts_g_resync=single(interp1(t_g,volts_raw_g,t_ni,'linear',0));
     % galil starts after the NI, so find the range where both are recording
@@ -35,7 +34,7 @@ function [res param]=process_ni(ms,mpt,folder,is_training)
     
     dpitch_filtered_r=single(interp1(t_g,dpitch_filtered,t_ni,'linear',0));
     dpitch_filtered_r=dpitch_filtered_r(range(1:end-delay+1));
-    
+
     dpitch_noisy_r=single(interp1(t_g,dpitch_noisy,t_ni,'linear',0));
     dpitch_noisy_r=dpitch_noisy_r(range((1:end-delay+1)));
     
@@ -79,7 +78,7 @@ function [res param]=process_ni(ms,mpt,folder,is_training)
     
     % Remove offset
     % volts=volts+v_offset_g;
-    volts=volts-mean(volts(1:5000,:));
+    volts=volts-mean(volts_ni(1:5000,:));
     
     % compute forces
     forces = compute_forces_lc4(volts, param.R4, param, true, true);

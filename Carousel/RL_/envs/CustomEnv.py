@@ -301,6 +301,7 @@ def continuously_read(
     # ------------------------------------------------------------------------
     # -------------------------MEASURE OFFSET---------------------------------
     eng.start_lc(nargout=0)  # Start the loadcell
+    wpt.sleep(0.5)
     t_start.value = wpt.time()
 
     print("Offset")
@@ -524,6 +525,8 @@ def continuously_read(
                 history_time[i-npast:i], history_time[i] - param["rotT"] / 5, side="left"
             )
             state[2] = (history_coeff[i-npast + idx, 1]+1.8)/6  # add Cr(t-T/5) normalized
+
+        # state[2]=(history_phase[i]-180)/360
         state[3]=(history_pitch_is[i]+30)/60
         i += 1  # update counter
 

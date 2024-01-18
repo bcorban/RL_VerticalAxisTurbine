@@ -6,9 +6,9 @@ CONFIG_ENV = {
     "action_lb": -6,  # Action space bounds
     "action_hb": 6,
     "path": "/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/2023_BC",
-    "bc": "005",  # file parameters
-    "date": "20231103",
-    "ms": 1,
-    "ACTUATE": False,  # To run the unactuated case, first set ACTUATE to False and set total timesteps accordingly in sac_continuous_action file.
+    "bc": "006",  # file parameters
+    "date": "20231201",
+    "ms": 8,
+    "ACTUATE": True,  # To run the unactuated case, first set ACTUATE to False and set total timesteps accordingly in sac_continuous_action file.
     "pre-fill-RB": False,  # True to add daniel's closed loop data to the replay buffer
 }

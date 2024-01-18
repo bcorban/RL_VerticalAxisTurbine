@@ -82,15 +82,15 @@ if __name__ == '__main__':
     g.GOpen("192.168.255.200 --direct -s ALL")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    envs = gym.vector.SyncVectorEnv([make_env("RL_/CustomEnv-v0", 1, 0, False, "policy test")])
+    envs = gym.vector.SyncVectorEnv([make_env("RL_/CustomEnv-v0-phase", 1, 0, False, "policy test")])
     envs.single_observation_space.dtype = np.float32
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     max_action = float(envs.single_action_space.high[0])
     actor = Actor(envs).to(device)
-    path="./"
-    #actor.load_state_dict(torch.load(os.path.join(path,'Actor_open_loop.pt')))  # "{path}./actor_step_174375.pt"))
-    actor=torch.load(os.path.join(path,'Actor_open_loop.pt'))
+    path="./wandb/run-20231201_140139-ki6i671m/files"
+    actor.load_state_dict(torch.load(os.path.join(path,'actor_final.pt')))  # "{path}./actor_step_174375.pt"))
+    # actor=torch.load(os.path.join('./','Actor_open_loop.pt')).to(device)
     actor.eval()
     obs = envs.reset()
 
@@ -102,7 +102,7 @@ if __name__ == '__main__':
         else:
             _, _, actions = actor.get_action(torch.Tensor(obs).to(device))
             actions = actions.detach().cpu().numpy()
-        _, _, dones, infos = envs.step(actions)
+        _, _, dones, infos = envs.step([[actions,obs[0]]])
         while wpt.time()-t<1/SPS:
             pass
     envs.close()

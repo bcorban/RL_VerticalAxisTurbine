@@ -45,12 +45,12 @@ def parse_args():
         help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
+    parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0-phase",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=5000,  #TOTAL TIMESTEPS
+    parser.add_argument("--total-timesteps", type=int, default=100000,  #TOTAL TIMESTEPS
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(200000),
+    parser.add_argument("--buffer-size", type=int, default=int(100000),
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.98, #GAMMA PARAMETER FOR THE Q VALUES
         help="the discount factor gamma")
@@ -384,7 +384,7 @@ if __name__ == "__main__":
                         min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
                         # actor_loss = ((alpha * log_pi) - min_qf_pi).mean() #original SACv2 implementation
                         actor_loss = (
-                            (max(alpha, 0.005) * log_pi) - min_qf_pi
+                            (max(alpha, 0.05) * log_pi) - min_qf_pi
                         ).mean()  # Quick fix of the SAC v2 version to force exploration
                         actor_optimizer.zero_grad()
                         actor_loss.backward()
