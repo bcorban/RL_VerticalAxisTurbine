@@ -12,6 +12,8 @@ then sharx_on(RPM) in matlab, and then launch sac_continuous_action.py. then pos
 
 For a training run, set the right reward in the get_transition method, the right parameters in sac_continuous_action
 
+Use conda environment 'cloned_rl'
+
 Process
 -------
 
