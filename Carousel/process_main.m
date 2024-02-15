@@ -1,16 +1,16 @@
 clear
 close all
 % folder='/home/adminit/RL_VerticalAxisTurbine/Carousel/2023_BC/bc002/raw/20230816/';
-folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc006\raw\20231201\';
+folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc008\raw\20240215\';
 % addpath(genpath('/home/adminit/Documents/MATLAB/fuf'))
 % addpath(genpath('/home/adminit/Documents/MATLAB/app_motioncontrol'))
 % addpath(genpath('/home/adminit/Documents/MATLAB/src_motioncontrol'))
 is_training=false;
-ms=8;
+ms=1;
 mpt=1;
 [res, param]=process_ni(ms,mpt,folder,is_training);
 load(append(folder,"Cp_phavg.mat"))
-
+save(append(folder,sprintf('res_ms%03dmpt%03d_1.mat',ms,mpt)),"res","res")
 [~,locsp] = findpeaks(transpose(res.phase));                                 % Find Maxima & Indices
 [~,locsv] = findpeaks(-transpose(res.phase));                                % Find Minima & Indices
 pkidx = sort([locsv locsp(locsp > locsv(1))]);             % Edit & Sort Indices

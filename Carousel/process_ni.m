@@ -56,9 +56,13 @@ function [res param]=process_ni(ms,mpt,folder,is_training)
         reward_r=single(interp1(time_action,reward,t_ni,'linear',0));
         reward_r=reward_r(range((1:end-delay+1)));
     
-        action_r=single(interp1(time_action,action,t_ni,'linear',0));
-        action_r=action_r(range((1:end-delay+1)));
+        
     end
+
+    action_r=single(interp1(time_action,action,t_ni,'linear',0));
+    action_r=action_r(range((1:end-delay+1)));
+    action_abs_r=single(interp1(time_action,action_abs,t_ni,'linear',0));
+    action_abs_r=action_abs_r(range((1:end-delay+1)));
 
 
     phase_r=mod(phase_cont_r, 360);
@@ -138,8 +142,10 @@ function [res param]=process_ni(ms,mpt,folder,is_training)
     res.Cm   = res.Mz ./ (param.denom * param.c);
     if is_training
         res.reward = reward_r;
-        res.action= action_r;
+        
     end
+    res.action= action_r;
+    res.action_abs= action_abs_r;
     % res.Cmx  = forces(:, 3) ./ (param.denom * param.c);
     % res.Cmy  = forces(:, 4) ./ (param.denom * param.c);
     
@@ -160,15 +166,15 @@ function [res param]=process_ni(ms,mpt,folder,is_training)
         res.phavg_list=p;
         res.Cp_phavg=Cp_phavg.phavg;
         param.Cp = mean(Cp_phavg.phavg);
-        save(append(folder,'Cp_phavg_.mat'),"Cp_phavg","Cp_phavg")
+        save(append(folder,'Cp_phavg.mat'),"Cp_phavg","Cp_phavg")
         
-        [p Cr_phavg]=phaseavgthis(deg2rad(res.phase),res.Cr,360);
-        res.Cr_phavg=Cr_phavg.phavg;
-        save(append(folder,'Cr_phavg_.mat'),"Cr_phavg","Cr_phavg")
-        save(append(folder,'phase_phavg_.mat'),"p","p")
-        [p Ct_phavg]=phaseavgthis(deg2rad(res.phase),res.Ct,360);
-        res.Ct_phavg=Ct_phavg.phavg;
-        save(append(folder,'Ct_phavg_.mat'),"Ct_phavg","Ct_phavg")
+        % [p Cr_phavg]=phaseavgthis(deg2rad(res.phase),res.Cr,360);
+        % res.Cr_phavg=Cr_phavg.phavg;
+        % save(append(folder,'Cr_phavg.mat'),"Cr_phavg","Cr_phavg")
+        % save(append(folder,'phase_phavg_.mat'),"p","p")
+        % [p Ct_phavg]=phaseavgthis(deg2rad(res.phase),res.Ct,360);
+        % res.Ct_phavg=Ct_phavg.phavg;
+        % save(append(folder,'Ct_phavg.mat'),"Ct_phavg","Ct_phavg")
     end
     if ~ is_training
         [p Cp_phavg]=phaseavgthis(deg2rad(res.phase),res.Cp,360);

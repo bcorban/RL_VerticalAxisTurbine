@@ -5,7 +5,7 @@ import random
 import time
 from distutils.util import strtobool
 from typing import Sequence
-
+()
 import flax
 import flax.linen as nn
 import gym
@@ -14,8 +14,16 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 from flax.training.train_state import TrainState
+from flax.training import checkpoints
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
+from load_mat import load_mat
+import RL_
+from scipy.io import savemat
+from config_ENV import CONFIG_ENV
+
+savemat("CONFIG_ENV.mat", CONFIG_ENV)
+
 
 
 def parse_args():
@@ -25,9 +33,9 @@ def parse_args():
         help="the name of this experiment")
     parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
-    parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
+    parser.add_argument("--wandb-project-name", type=str, default="RL_VAWT",
         help="the wandb's project name")
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
@@ -53,7 +61,7 @@ def parse_args():
         help="the batch size of sample from the reply memory")
     parser.add_argument("--exploration-noise", type=float, default=0.1,
         help="the scale of exploration noise")
-    parser.add_argument("--learning-starts", type=int, default=25e3,
+    parser.add_argument("--learning-starts", type=int, default=5e3,
         help="timestep to start learning")
     parser.add_argument("--policy-frequency", type=int, default=1,
         help="the frequency of training policy (delayed)")
@@ -68,12 +76,12 @@ def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
         env = gym.make(env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
-        if capture_video:
-            if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env.seed(seed)
-        env.action_space.seed(seed)
-        env.observation_space.seed(seed)
+        # if capture_video:
+        #     if idx == 0:
+        #         env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+        # env.seed(seed)
+        # env.action_space.seed(seed)
+        # env.observation_space.seed(seed)
         return env
 
     return thunk
@@ -128,7 +136,7 @@ if __name__ == "__main__":
             monitor_gym=True,
             save_code=True,
         )
-    writer = SummaryWriter(f"runs/{run_name}")
+    writer = SummaryWriter(f"{wandb.run.dir}")
     writer.add_text(
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
@@ -310,9 +318,13 @@ if __name__ == "__main__":
                 writer.add_scalar("losses/actor_loss", actor_loss_value.item(), global_step)
                 print("SPS:", int(global_step / (time.time() - start_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
-        
+                # jax.numpy.save(actor_state, f'actor_step_{global_step}.jax')
+                                
+                CKPT_DIR = '/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/ckpts'
+                checkpoints.save_checkpoint(ckpt_dir=CKPT_DIR+'/state', target=actor_state, step=global_step)
+                # checkpoints.save_checkpoint(ckpt_dir=CKPT_DIR+'/actor', target=actor, step=global_step)
         else:
-            time.sleep(0.01)
+            time.sleep(0.012)
         # TRY NOT TO MODIFY: save data to replay buffer; handle `terminal_observation`
         next_obs, rewards = envs.envs[
                 0
