@@ -9,3 +9,9 @@ register(
     id="RL_/CustomEnv-v0-phase",
     entry_point="RL_.envs:CustomEnv_phase",
 )
+
+
+# register(
+#     id="RL_/CustomEnv-v0-time-series",
+#     entry_point="RL_.envs:CustomEnv_time_series",
+# )

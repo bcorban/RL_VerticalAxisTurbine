@@ -2,7 +2,7 @@
 import argparse
 import os
 import random
-import time
+import win_precise_time as time
 from distutils.util import strtobool
 from typing import Sequence
 ()
@@ -55,7 +55,7 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--tau", type=float, default=0.005,
         help="target smoothing coefficient (default: 0.005)")
-    parser.add_argument("--policy-noise", type=float, default=0.2,
+    parser.add_argument("--policy-noise", type=float, default=0.15,
         help="the scale of policy noise")
     parser.add_argument("--batch-size", type=int, default=256,
         help="the batch size of sample from the reply memory")
@@ -72,16 +72,11 @@ def parse_args():
     return args
 
 
-def make_env(env_id, seed, idx, capture_video, run_name):
+def make_env(env_id):
     def thunk():
         env = gym.make(env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
-        # if capture_video:
-        #     if idx == 0:
-        #         env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        # env.seed(seed)
-        # env.action_space.seed(seed)
-        # env.observation_space.seed(seed)
+
         return env
 
     return thunk
@@ -149,7 +144,7 @@ if __name__ == "__main__":
     key, actor_key, qf1_key, qf2_key = jax.random.split(key, 4)
 
     # env setup
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv([make_env(args.env_id)])
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     max_action = float(envs.single_action_space.high[0])
@@ -260,6 +255,9 @@ if __name__ == "__main__":
         return actor_state, (qf1_state, qf2_state), actor_loss_value
     mean_r = 0
     start_time = time.time()
+    ms = CONFIG_ENV["ms"]
+    CKPT_DIR = f'/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/ckpts_ms00{ms}'
+    
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
@@ -319,9 +317,7 @@ if __name__ == "__main__":
                 print("SPS:", int(global_step / (time.time() - start_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
                 # jax.numpy.save(actor_state, f'actor_step_{global_step}.jax')
-                                
-                CKPT_DIR = '/Users/PIVUSER/Desktop/RL_VerticalAxisTurbine/Carousel/ckpts'
-                checkpoints.save_checkpoint(ckpt_dir=CKPT_DIR+'/state', target=actor_state, step=global_step)
+               
                 # checkpoints.save_checkpoint(ckpt_dir=CKPT_DIR+'/actor', target=actor, step=global_step)
         else:
             time.sleep(0.012)
@@ -345,6 +341,13 @@ if __name__ == "__main__":
                 "charts/mean_reward_last_45", mean_r / 45, global_step
             )
             mean_r=0
+        if global_step%5000==0 and global_step>1:
+                
+                 checkpoints.save_checkpoint(ckpt_dir=CKPT_DIR+f'/state_step_{global_step}', target=actor_state, step=global_step)
 
     envs.close()
     writer.close()
+
+            
+
+    checkpoints.save_checkpoint(ckpt_dir=CKPT_DIR+'/state_final', target=actor_state, step=global_step)

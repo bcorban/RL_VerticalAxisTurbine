@@ -46,19 +46,20 @@ def parse_args():
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0-phase",
+    # parser.add_argument("--env-id", type=str, default="RL_/CustomEnv-v0",
     # parser.add_argument("--env-id", type=str, default="Pendulum-v1",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=100000,  #TOTAL TIMESTEPS
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(100000),
+    parser.add_argument("--buffer-size", type=int, default=int(150000),
         help="the replay memory buffer size")
-    parser.add_argument("--gamma", type=float, default=0.98, #GAMMA PARAMETER FOR THE Q VALUES
+    parser.add_argument("--gamma", type=float, default=0.97, #GAMMA PARAMETER FOR THE Q VALUES
         help="the discount factor gamma")
     parser.add_argument("--tau", type=float, default=0.005,
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=512,
         help="the batch size of sample from the reply memory")
-    parser.add_argument("--learning-starts", type=int, default=1000, #HAS TO BE HIGHER THAN THE BATCH SIZE
+    parser.add_argument("--learning-starts", type=int, default=5000, #HAS TO BE HIGHER THAN THE BATCH SIZE
         help="timestep to start learning")
     parser.add_argument("--policy-lr", type=float, default=5e-4,
         help="the learning rate of the policy network optimizer")

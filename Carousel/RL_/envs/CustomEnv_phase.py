@@ -46,16 +46,31 @@ if user == "PIVUSER":
     g.GOpen("192.168.255.200 --direct -s ALL")
 
 
-class CustomEnv_time_series(gym.Env):
+elif user == "adminit":
+    sys.path.append("/home/adminit/RL_VerticalAxisTurbine/Carousel/RL_/envs")
+
+    eng = matlab.engine.start_matlab()
+    path = "/home/adminit/RL_VerticalAxisTurbine/Carousel"
+    eng.addpath(path, nargout=0)
+    path = "/home/adminit/RL_VerticalAxisTurbine"
+    eng.addpath(path, nargout=0)
+
+    g = gclib.py()
+    c = g.GCommand
+    g.GOpen("192.168.255.25 --direct -s ALL")
+    print(g.GInfo())
+
+
+class CustomEnv_phase(gym.Env):
     def __init__(self) -> None:  # This method is called when creating the environment
-        super(CustomEnv_time_series, self).__init__()
+        super(CustomEnv_phase, self).__init__()
         # self.dict_env = dict_env
         self.action_space = Box(
             low=CONFIG_ENV["action_lb"], high=CONFIG_ENV["action_hb"], shape=(1,)
         )
 
         self.observation_space = Box(
-            low=np.array([-5, -5, -1]*CONFIG_ENV['nb_conv_time']*CONFIG_ENV["states_per_conv_time"]), high=np.array([5, 5, 1]*CONFIG_ENV['nb_conv_time']*CONFIG_ENV["states_per_conv_time"])
+            low=np.array([-5, -5, -5, -1, -1]), high=np.array([5, 5, 5, 1, 1])
         )
 
         self.N_transient_effects = CONFIG_ENV[
@@ -72,7 +87,7 @@ class CustomEnv_time_series(gym.Env):
         action,state=act_state[0],act_state[1]
         self.overshoot = False
         if ACTUATE:
-            self.action_abs = self.pitch_is.value + action  # in degrees
+            self.action_abs += float(action)  # in degrees
         else:
             self.action_abs=0
         # self.action_abs=np.interp(self.phase.value+20,pitch_profile[:,0],pitch_profile[:,1])
@@ -106,7 +121,6 @@ class CustomEnv_time_series(gym.Env):
 
         return np.array(self.state), 0, self.terminated.value, info
 
-
     def reset(
         self,
         *,
@@ -121,10 +135,11 @@ class CustomEnv_time_series(gym.Env):
             self.save_data()  # save data from previous ep
 
         self.overshoot=False
+        self.action_abs=float(0)
         self.j = 0  # action counter
         self.episode_counter.value += 1
-        self.history_states = np.zeros((100000, 3*CONFIG_ENV['nb_conv_time']*CONFIG_ENV["states_per_conv_time"]))
-        self.history_next_states = np.zeros((100000, 3*CONFIG_ENV['nb_conv_time']*CONFIG_ENV["states_per_conv_time"]))
+        self.history_states = np.zeros((100000, 5))
+        self.history_next_states = np.zeros((100000, 5))
         self.history_action = np.zeros(100000)
         self.history_action_abs = np.zeros(100000)
         self.history_reward = np.zeros(100000)
@@ -139,7 +154,7 @@ class CustomEnv_time_series(gym.Env):
         self.t_start=Value('d',0)
         manager = Manager()
         self.state = manager.list()
-        self.state[:] = [0 for i in  range(3*CONFIG_ENV['nb_conv_time']*CONFIG_ENV["states_per_conv_time"])]
+        self.state[:] = [0, 0, 0, 0, 0]
 
         self.process = Process(
             target=continuously_read,
@@ -503,23 +518,17 @@ def continuously_read(
         # update state
         state[0] = (history_coeff[i,0] + 0.3)/1.1 #Normalize state (Ct+min_Ct_non_actuated)/max-min
         state[1] = (history_coeff[i,1] + 1.8)/6
-        state[2]=(history_pitch_is[i]+30)/60 #add current pitch
 
-        # finding the oldest instant to include in the state (t-nb of convective time included)
+        # adding Cr with T/5 time delay to the state. Check in the 500 past measures which one was exactly T/5 seconds away.
         npast = 300
         if i > npast:
             idx = np.searchsorted(
-                history_time[i-npast:i], history_time[i] - CONFIG_ENV['nb_conv_time'] * param["rotT"] / 15, side="left"
+                history_time[i-npast:i], history_time[i] - param["rotT"] / 5, side="left"
             )
-            index_list=[int(i-idx/(CONFIG_ENV['nb_conv_time']*CONFIG_ENV["states_per_conv_time"]-1)*j) for j in range(CONFIG_ENV['nb_conv_time']*CONFIG_ENV["states_per_conv_time"])]
-            n=1
-            for h in index_list:
-                        state[3*n] = (history_coeff[h,0] + 0.3)/1.1 #Normalize state (Ct+min_Ct_non_actuated)/max-min
-                        state[3*n+1] = (history_coeff[h,1] + 1.8)/6
-                        state[3*n+2]=(history_pitch_is[h]+30)/60 #add current pitch
-                        n+=1
-            
-        
+            state[2] = (history_coeff[i-npast + idx, 1]+1.8)/6  # add Cr(t-T/5) normalized
+            # state[3] = (history_coeff[i-npast + idx, 0]+0.3)/1.1  # add Ct(t-T/5) normalized
+        state[3]=(history_pitch_is[i]+30)/60
+        state[4]=(history_phase[i])/360
         i += 1  # update counter
 
     print("stop reading", flush=True)

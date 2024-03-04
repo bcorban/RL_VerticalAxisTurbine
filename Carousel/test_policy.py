@@ -88,7 +88,7 @@ if __name__ == '__main__':
 
     max_action = float(envs.single_action_space.high[0])
     actor = Actor(envs).to(device)
-    path="./wandb/run-20231201_140139-ki6i671m/files"
+    path="./wandb/run-20240215_140244-d5kkfma9/files"
     actor.load_state_dict(torch.load(os.path.join(path,'actor_final.pt')))  # "{path}./actor_step_174375.pt"))
     # actor=torch.load(os.path.join('./','Actor_open_loop.pt')).to(device)
     actor.eval()
@@ -102,8 +102,10 @@ if __name__ == '__main__':
         else:
             _, _, actions = actor.get_action(torch.Tensor(obs).to(device))
             actions = actions.detach().cpu().numpy()
-            
+
         _, _, dones, infos = envs.step([[actions,obs[0]]])
+
+        # ANCIEN
        #  _, _, dones, infos = envs.step([[actions[0],obs[0]]])
         while wpt.time()-t<1/SPS:
             pass

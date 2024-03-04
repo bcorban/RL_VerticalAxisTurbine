@@ -6,7 +6,7 @@ folder='C:\Users\PIVUSER\Desktop\RL_VerticalAxisTurbine\Carousel\2023_BC\bc008\r
 % addpath(genpath('/home/adminit/Documents/MATLAB/app_motioncontrol'))
 % addpath(genpath('/home/adminit/Documents/MATLAB/src_motioncontrol'))
 is_training=false;
-ms=1;
+ms=11;
 mpt=1;
 [res, param]=process_ni(ms,mpt,folder,is_training);
 load(append(folder,"Cp_phavg.mat"))
